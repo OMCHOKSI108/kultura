@@ -10,14 +10,16 @@ import { getMockSessions } from "@/lib/mock-response";
 import type { ChatSession, Message } from "@/types/chat";
 
 const INITIAL_SESSIONS = getMockSessions();
+const INITIAL_SESSION = INITIAL_SESSIONS[0];
 
 export default function Home() {
   const [sessions, setSessions] = useState<ChatSession[]>(INITIAL_SESSIONS);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(INITIAL_SESSION.id);
   const [selectedModel, setSelectedModel] = useState("Mistral Large 4");
 
   const { messages, attachments, isActive, sendMessage, addAttachment, removeAttachment, resetChat, loadMessages } =
     useChat({
+      initialMessages: INITIAL_SESSION.messages,
       selectedModel,
       onMessagesChange: useCallback((msgs: Message[]) => {
         if (!msgs.length) return;
