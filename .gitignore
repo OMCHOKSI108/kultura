@@ -18,3 +18,10 @@ dist/
 # misc
 .DS_Store
 *.log
+
+# playwright raw recordings
+automation/recordings/
+
+# python
+__pycache__/
+*.pyc

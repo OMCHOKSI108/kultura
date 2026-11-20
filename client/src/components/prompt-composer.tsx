@@ -173,7 +173,7 @@ export function PromptComposer({
 
       <div className="flex items-center gap-2 px-3 py-2.5">
         {/* + file attach — left end */}
-        <button onClick={() => fileRef.current?.click()} style={{ color: "#555", flexShrink: 0 }}
+        <button onClick={() => fileRef.current?.click()} aria-label="Attach file" style={{ color: "#555", flexShrink: 0 }}
           onMouseEnter={(e) => (e.currentTarget.style.color = "#F0F0F0")}
           onMouseLeave={(e) => (e.currentTarget.style.color = "#555")}
           title="Attach file">
@@ -199,6 +199,7 @@ export function PromptComposer({
           <button
             onClick={handleSend}
             disabled={!canSend}
+            aria-label="Send message"
             className="flex items-center justify-center transition-opacity"
             style={{
               width: 30, height: 30,

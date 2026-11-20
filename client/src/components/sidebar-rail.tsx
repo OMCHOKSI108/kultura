@@ -45,6 +45,7 @@ function RailBtn({ children, onClick, label, active = false }: {
     <div className="relative">
       <button
         onClick={onClick}
+        aria-label={label}
         onMouseEnter={() => setTip(true)}
         onMouseLeave={() => setTip(false)}
         className="flex items-center justify-center rounded-xl transition-all duration-150"
@@ -142,7 +143,7 @@ export function SidebarRail({ sessions, activeSessionId, onNewChat, onOpenSessio
             <div className="flex items-center justify-between px-4 py-3 flex-shrink-0"
               style={{ borderBottom: "1px solid #222225" }}>
               <span className="text-sm font-semibold" style={{ color: "#F0F0F0" }}>Chat History</span>
-              <button onClick={toggleHistory} style={{ color: "#555" }}
+              <button onClick={toggleHistory} aria-label="Close history" style={{ color: "#555" }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = "#F0F0F0")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "#555")}>
                 <IcoClose />

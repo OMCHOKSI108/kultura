@@ -7,14 +7,56 @@ export const MOCK_THINKING_STEPS: ThinkingStep[] = [
 ];
 
 const MOCK_REPLIES = [
-  `Sure! Here's a quick breakdown:\n\n**Key Points**\n- This is a frontend-only mock right now.\n- When you wire up the server, replace this file with a real \`fetch\` call.\n- The UI will stream responses exactly the same way.\n\nLet me know what you'd like to build next.`,
-  `Great question. Here's how I'd approach it:\n\n1. Start with a clear data model.\n2. Keep each component under 200 lines.\n3. Separate concerns — UI, state, and utilities live in different folders.\n\nThis keeps the codebase easy to reason about as it grows.`,
-  `I can help with that. The pattern you're looking for is a **custom hook** that manages:\n- Local state for messages\n- An async function that simulates (or later calls) the backend\n- A streaming update loop via \`setTimeout\` or SSE\n\nWant me to sketch out the full implementation?`,
-  `Noted. The \`NEXT_PUBLIC_SERVER_URL\` in your root \`.env\` is already wired into \`src/lib/env.ts\`. When your \`server/\` is ready, just update that URL and swap the mock in \`mock-response.ts\` for a real fetch.`,
+  `Sure! Here's a quick breakdown:
+
+**Key points**
+- Model resources as nouns: /sessions, /messages, /models
+- Keep handlers thin and push logic into services
+- Return consistent JSON errors with proper status codes
+
+Want a minimal Next.js route example?`,
+  `Great question. Here's how I'd approach it:
+
+1. Start with a clear data model.
+2. Keep each component under 200 lines.
+3. Separate concerns — UI, state, and utilities live in different folders.
+
+This keeps the codebase easy to reason about as it grows.`,
+  `I can help with that. The pattern you're looking for is a **custom hook** that manages:
+- Local state for messages
+- An async function that simulates (or later calls) the backend
+- A streaming update loop via \`setTimeout\` or SSE
+
+Want me to sketch out the full implementation?`,
+  `Here's a clean starting schema for a chat app:
+
+- users — id, email, created_at
+- sessions — id, user_id, title, updated_at
+- messages — id, session_id, role, content, created_at
+
+Index messages.session_id and paginate by created_at for fast history loads.`,
+  `To connect a database to Kultura:
+
+1. Add Postgres to server/ (Prisma or Drizzle works well)
+2. Keep the connection string in the server's .env
+3. Expose GET /sessions and POST /messages from the API
+4. Point NEXT_PUBLIC_SERVER_URL at that API
+
+Start with one messages table and add indexes as history grows.`,
+];
+
+const KEYWORDS: [RegExp, number][] = [
+  [/database|postgres|drizzle|prisma|persist/i, 4],
+  [/schema|sql|table/i, 3],
+  [/hook|react|component/i, 1],
+  [/stream|sse|token/i, 2],
+  [/api|rest|endpoint|deploy|vercel/i, 0],
 ];
 
 export function getMockReply(prompt: string): string {
-  return MOCK_REPLIES[prompt.length % MOCK_REPLIES.length];
+  const match = KEYWORDS.find(([pattern]) => pattern.test(prompt));
+  const index = match ? match[1] : prompt.length % MOCK_REPLIES.length;
+  return MOCK_REPLIES[index];
 }
 
 export const THINKING_DURATION_MS = 2200;
@@ -138,5 +180,8 @@ export function getMockSessions() {
     makeSession("s2", "Explain React hooks", "Can you explain React hooks to me?", 1),
     makeSession("s3", "Debug my Tailwind config", "My Tailwind config isn't working, help!", 2),
     makeSession("s4", "Design a database schema", "How should I design a database schema for a chat app?", 3),
+    makeSession("s5", "Deploy to Vercel", "How do I deploy Kultura to Vercel?", 0),
+    makeSession("s6", "Streaming responses", "How does streaming work in Kultura?", 2),
+    makeSession("s7", "Style the sidebar", "Can you theme the sidebar to match the K logo?", 3),
   ];
 }

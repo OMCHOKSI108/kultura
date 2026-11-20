@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/newchatarea.png" alt="Kultura chat interface" width="100%" />
+  <img src="assets/demo.gif" alt="Kultura demo" width="100%" />
 </p>
 
 ## Features
@@ -36,3 +36,18 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Stack
 
 Next.js 16 · React 19 · TypeScript · Tailwind CSS 4
+
+## Recording the demo
+
+The walkthrough above is produced by a Playwright script:
+
+```bash
+python3.12 automation/record_demo.py
+```
+
+It starts the dev server, records the flow, and writes a raw video to `automation/recordings/`. The rendered clip is also available as [assets/demo.mp4](assets/demo.mp4).
+
+<details>
+<summary>Static screenshot</summary>
+<p align="center"><img src="assets/newchatarea.png" alt="Kultura new chat" width="100%" /></p>
+</details>
