@@ -112,6 +112,39 @@ function MarkdownBody({ content, sources }: { content: string; sources?: WebSour
             </a>
           );
         },
+        table: ({ children }) => (
+          <div className="my-4 w-full overflow-x-auto rounded-xl border border-[#2E2E34] bg-[#141417]/80 shadow-md backdrop-blur-xs">
+            <table className="w-full min-w-[380px] text-left border-collapse text-xs text-[#D0D0D0]">
+              {children}
+            </table>
+          </div>
+        ),
+        thead: ({ children }) => (
+          <thead className="bg-[#1C1C21] border-b border-[#2E2E34] text-zinc-100 font-semibold uppercase tracking-wider text-[11px]">
+            {children}
+          </thead>
+        ),
+        tbody: ({ children }) => (
+          <tbody className="divide-y divide-[#26262C]">
+            {children}
+          </tbody>
+        ),
+        tr: ({ children }) => (
+          <tr className="transition-colors hover:bg-white/[0.04] even:bg-[#18181C]/60">
+            {children}
+          </tr>
+        ),
+        th: ({ children }) => (
+          <th className="px-4 py-3 font-semibold text-zinc-100 border-r border-[#26262C] last:border-r-0 whitespace-nowrap">
+            {children}
+          </th>
+        ),
+        td: ({ children }) => (
+          <td className="px-4 py-2.5 text-xs text-[#C8C8C8] border-r border-[#26262C] last:border-r-0 leading-relaxed align-top">
+            {children}
+          </td>
+        ),
+        hr: () => <hr className="my-6 border-[#2A2A2E]" />,
       }}
     >
       {processedContent}
