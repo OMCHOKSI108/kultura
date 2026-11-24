@@ -257,6 +257,9 @@ class StreamNormalizer:
                     combined = self.partial_tag_buffer + content
                     self.partial_tag_buffer = ""
 
+                    OPEN_TAG_PREFIXES = ("<think", "<thin", "<thi", "<th", "<t", "<")
+                    CLOSE_TAG_PREFIXES = ("</think", "</thin", "</thi", "</th", "</t", "</", "<")
+
                     while combined:
                         if not self.in_think_tag:
                             if "<think>" in combined:
@@ -271,9 +274,9 @@ class StreamNormalizer:
                                 if self.thinking_start_time is None:
                                     self.thinking_start_time = now
                                 combined = after
-                            elif "<th" in combined or "<think" in combined or combined.endswith("<"):
-                                # Possible partial opening tag, buffer it
-                                idx = combined.rfind("<")
+                            elif any(combined.endswith(p) for p in OPEN_TAG_PREFIXES):
+                                matched_p = next(p for p in OPEN_TAG_PREFIXES if combined.endswith(p))
+                                idx = len(combined) - len(matched_p)
                                 self.partial_tag_buffer = combined[idx:]
                                 regular = combined[:idx]
                                 if regular:
@@ -304,8 +307,9 @@ class StreamNormalizer:
                                     )
                                 self.in_think_tag = False
                                 combined = after
-                            elif "</th" in combined or combined.endswith("</"):
-                                idx = combined.rfind("<")
+                            elif any(combined.endswith(p) for p in CLOSE_TAG_PREFIXES):
+                                matched_p = next(p for p in CLOSE_TAG_PREFIXES if combined.endswith(p))
+                                idx = len(combined) - len(matched_p)
                                 self.partial_tag_buffer = combined[idx:]
                                 thought = combined[:idx]
                                 if thought:
@@ -354,10 +358,15 @@ class StreamNormalizer:
 
             # If the model produced NO answer content (only thought tokens or empty response)
             if not self.full_content:
-                fallback_msg = (
-                    "\n\n⚠️ Model reached its token limit while thinking and did not produce a final answer. "
-                    "Try switching to ⚡ Fast mode or lowering the Think budget."
-                )
+                if self.thinking_tokens > 0 or self.full_thinking:
+                    fallback_msg = (
+                        "\n\n⚠️ Model reached its token limit while thinking and did not produce a final answer. "
+                        "Try switching to ⚡ Fast mode or lowering the Think budget."
+                    )
+                else:
+                    fallback_msg = (
+                        "\n\n⚠️ Upstream engine returned an empty response. Please verify the model is loaded and try again."
+                    )
                 self.full_content.append(fallback_msg)
                 metrics_snap = self.get_metrics_snapshot()
                 yield ("content", json.dumps({"chunk": fallback_msg, "metrics": metrics_snap}), metrics_snap)

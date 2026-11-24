@@ -123,7 +123,9 @@ export function ChatSettingsPopover({ settings, onUpdateSettings }: ChatSettings
     Boolean(settings.system_prompt) ||
     settings.temperature !== 0.7 ||
     settings.repeat_penalty !== 1.1 ||
-    settings.max_tokens !== 2048;
+    settings.max_tokens !== 2048 ||
+    settings.enable_thinking !== false ||
+    Boolean(settings.reasoning_budget);
 
   return (
     <div className="relative inline-block" ref={popoverRef}>

@@ -204,13 +204,20 @@ export function subscribeToDownloadsStream(
   onUpdate: (downloads: DownloadStatusItem[]) => void
 ): () => void {
   const controller = new AbortController();
+  let reconnectTimer: NodeJS.Timeout | null = null;
 
   async function connect() {
+    if (controller.signal.aborted) return;
     try {
       const res = await fetch(`${API_BASE}/api/hub/downloads/stream`, {
         signal: controller.signal,
       });
-      if (!res.ok || !res.body) return;
+      if (!res.ok || !res.body) {
+        if (!controller.signal.aborted) {
+          reconnectTimer = setTimeout(connect, 3000);
+        }
+        return;
+      }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -234,10 +241,15 @@ export function subscribeToDownloadsStream(
           }
         }
       }
+
+      // Automatically reconnect if stream closed by server/proxy timeout
+      if (!controller.signal.aborted) {
+        reconnectTimer = setTimeout(connect, 2000);
+      }
     } catch (e: any) {
-      if (e?.name !== "AbortError") {
+      if (e?.name !== "AbortError" && !controller.signal.aborted) {
         // Reconnect after 3s on error
-        setTimeout(connect, 3000);
+        reconnectTimer = setTimeout(connect, 3000);
       }
     }
   }
@@ -246,5 +258,6 @@ export function subscribeToDownloadsStream(
 
   return () => {
     controller.abort();
+    if (reconnectTimer) clearTimeout(reconnectTimer);
   };
 }

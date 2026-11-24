@@ -11,7 +11,7 @@ class AttachmentInput(BaseModel):
 
 
 class ChatMessageInput(BaseModel):
-    role: str  # user, assistant, system
+    role: str = Field(..., pattern="^(user|assistant|system)$", description="Role: user, assistant, or system")
     content: str
     attachments: Optional[List[AttachmentInput]] = None
 
@@ -29,7 +29,7 @@ class ChatCompletionRequest(BaseModel):
     conversation_id: Optional[str] = None
     provider: str = Field(default="ollama", description="ollama, llamacpp, koboldcpp, lmstudio, jan")
     model: str = Field(..., description="Target model tag or filename")
-    messages: List[ChatMessageInput]
+    messages: List[ChatMessageInput] = Field(..., min_length=1, description="List of messages (at least 1 required)")
     system_prompt: Optional[str] = None
     enable_thinking: bool = True
     reasoning_budget: Optional[int] = None

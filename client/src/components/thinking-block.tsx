@@ -125,22 +125,29 @@ export function ThinkingBlock({ steps = [], thinkingText = "", isThinking, durat
       return () => clearInterval(timer);
     } else {
       startRef.current = null;
-      setLiveDuration(durationMs);
+      if (durationMs > 0) {
+        setLiveDuration(durationMs);
+      }
     }
   }, [isThinking, durationMs]);
 
-  // Auto-scroll while streaming thinking
+  // Auto-scroll while streaming thinking only if scrolled near bottom
   useEffect(() => {
     if (isThinking && contentRef.current) {
-      contentRef.current.scrollTop = contentRef.current.scrollHeight;
+      const el = contentRef.current;
+      const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+      if (isNearBottom) {
+        el.scrollTop = el.scrollHeight;
+      }
     }
   }, [isThinking, thinkingText]);
 
   const hasContent = steps.length > 0 || (thinkingText && thinkingText.trim().length > 0);
   if (!hasContent && !isThinking) return null;
 
-  const seconds = (liveDuration / 1000).toFixed(1);
-  const label = isThinking ? `Thinking... ${seconds}s` : `Thought for ${(durationMs / 1000).toFixed(1)}s`;
+  const displayMs = durationMs > 0 ? durationMs : liveDuration;
+  const seconds = (displayMs / 1000).toFixed(1);
+  const label = isThinking ? `Thinking... ${seconds}s` : `Thought for ${seconds}s`;
 
   return (
     <div className="rounded-xl overflow-hidden mb-4 border border-[#2E2E33] bg-[#19191D] transition-all shadow-xs">

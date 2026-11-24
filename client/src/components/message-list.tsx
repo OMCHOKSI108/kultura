@@ -38,12 +38,18 @@ function IcoTrash() {
 
 function preprocessCitations(text: string, sources?: WebSource[]): string {
   if (!sources || sources.length === 0 || !text) return text;
-  // Convert [1], [2], etc. (that are not already part of markdown links) into citation protocol links
-  return text.replace(/\[(\d+)\](?!\()/g, (match, numStr) => {
-    const idx = parseInt(numStr, 10);
-    const exists = sources.some((s) => s.index === idx);
-    return exists ? `[${match}](citation://${idx})` : match;
-  });
+  // Protect code blocks and inline code from citation replacement (e.g. array[1])
+  const parts = text.split(/(```[\s\S]*?```|`[^`\n]+`)/g);
+  return parts
+    .map((part) => {
+      if (part.startsWith("`")) return part;
+      return part.replace(/\[(\d+)\](?!\()/g, (match, numStr) => {
+        const idx = parseInt(numStr, 10);
+        const exists = sources.some((s) => s.index === idx);
+        return exists ? `[${numStr}](citation://${idx})` : match;
+      });
+    })
+    .join("");
 }
 
 function MarkdownBody({ content, sources }: { content: string; sources?: WebSource[] }) {
@@ -226,9 +232,13 @@ function StatsBar({ message, onDelete }: { message: Message; onDelete?: () => vo
   if (!message.content && message.isStreaming) return null;
 
   function copy() {
-    navigator.clipboard.writeText(message.content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    navigator.clipboard
+      .writeText(message.content)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      })
+      .catch(() => {});
   }
 
   return (
@@ -374,7 +384,13 @@ export function MessageList({
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const isNearBottom =
+      typeof window !== "undefined"
+        ? window.innerHeight + window.scrollY >= document.body.offsetHeight - 150
+        : true;
+    if (isNearBottom) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages.length, messages[messages.length - 1]?.content]);
 
   // Compute model transition dividers

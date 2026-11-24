@@ -120,6 +120,7 @@ export function ModelHubView({
   const [downloads, setDownloads] = useState<DownloadStatusItem[]>([]);
   const [targetProviders, setTargetProviders] = useState<Record<string, string>>({});
   const completedIdsRef = useRef<Set<string>>(new Set());
+  const isFirstDownloadsPayloadRef = useRef(true);
 
   // Debounce search input
   useEffect(() => {
@@ -153,6 +154,16 @@ export function ModelHubView({
   useEffect(() => {
     const unsubscribe = subscribeToDownloadsStream((items) => {
       setDownloads(items);
+
+      if (isFirstDownloadsPayloadRef.current) {
+        isFirstDownloadsPayloadRef.current = false;
+        for (const item of items) {
+          if (item.status === "completed") {
+            completedIdsRef.current.add(item.download_id);
+          }
+        }
+        return;
+      }
 
       // Check if any download newly completed
       for (const item of items) {

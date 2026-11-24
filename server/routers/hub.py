@@ -17,6 +17,7 @@ router = APIRouter(prefix="/api/hub", tags=["hub"])
 
 
 @router.get("/search", response_model=List[HubModelSearchItem])
+@router.get("/models", response_model=List[HubModelSearchItem])
 async def search_hub_models(
     q: Optional[str] = Query(None, description="Search query for model name or tag"),
     sort: str = Query("downloads", description="Sort by downloads, likes, or lastModified"),

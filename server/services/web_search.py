@@ -200,12 +200,19 @@ class WebSearchService:
         limit: int,
         is_english: bool,
     ) -> List[Dict[str, Any]]:
+        if limit <= 0:
+            return []
+
         clean_sources: List[Dict[str, Any]] = []
         seen_urls = set()
 
         for r in raw_items:
             url = r.get("url") or r.get("href") or ""
             if not url or url in seen_urls:
+                continue
+
+            # Validate URL scheme to prevent javascript:, file://, data: injections
+            if not (url.startswith("http://") or url.startswith("https://")):
                 continue
 
             domain = self._extract_domain(url)
@@ -364,9 +371,12 @@ class WebSearchService:
             "The following verified search snippets represent ground truth for this query:",
         ]
         for s in sources:
-            clean_snippet = re.sub(r"\s+", " ", s.get("snippet", "")).strip()
+            clean_snippet = html.escape(re.sub(r"\s+", " ", s.get("snippet", "")).strip())
+            safe_domain = html.escape(str(s.get("domain", "")), quote=True)
+            safe_title = html.escape(str(s.get("title", "")), quote=True)
+            safe_url = html.escape(str(s.get("url", "")), quote=True)
             lines.append(
-                f'  <source index="{s["index"]}" domain="{s["domain"]}" title="{s["title"]}" url="{s["url"]}">\n'
+                f'  <source index="{s["index"]}" domain="{safe_domain}" title="{safe_title}" url="{safe_url}">\n'
                 f"    {clean_snippet}\n"
                 f"  </source>"
             )

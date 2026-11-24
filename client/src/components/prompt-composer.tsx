@@ -99,6 +99,7 @@ export function PromptComposer({
   }
 
   function handleKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.nativeEvent.isComposing) return;
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -107,7 +108,17 @@ export function PromptComposer({
 
   function handleFiles(files: FileList | null) {
     if (!files) return;
-    Array.from(files).forEach(onAddFile);
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB limit
+    Array.from(files).forEach((f) => {
+      if (f.size > MAX_SIZE) {
+        alert(`File "${f.name}" exceeds the 10MB limit.`);
+        return;
+      }
+      onAddFile(f);
+    });
+    if (fileRef.current) {
+      fileRef.current.value = "";
+    }
   }
 
   function handleDrop(e: React.DragEvent) {

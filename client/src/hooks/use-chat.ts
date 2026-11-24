@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { Message, FileAttachment, ChatInferenceSettings } from "@/types/chat";
 import { deleteMessageApi } from "@/lib/api";
 
@@ -37,6 +37,7 @@ export function useChat({
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
   const [isActive, setIsActive] = useState(initialMessages.length > 0);
   const [isGenerating, setIsGenerating] = useState(false);
+  const isGeneratingRef = useRef(false);
   const [settings, setSettings] = useState<ChatInferenceSettings>(() => {
     if (typeof window !== "undefined") {
       try {
@@ -49,6 +50,17 @@ export function useChat({
     return DEFAULT_INFERENCE_SETTINGS;
   });
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Unmount cleanup to abort active streams and prevent state updates on unmounted component
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      isGeneratingRef.current = false;
+    };
+  }, []);
 
   const updateMessages = useCallback(
     (updater: (prev: Message[]) => Message[]) => {
@@ -78,6 +90,7 @@ export function useChat({
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
+    isGeneratingRef.current = false;
     setIsGenerating(false);
     updateMessages((prev) =>
       prev.map((m) =>
@@ -94,7 +107,13 @@ export function useChat({
     );
   }, [updateMessages]);
 
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB ceiling
+
   const addAttachment = useCallback((file: File) => {
+    if (file.size > MAX_FILE_SIZE) {
+      alert(`File "${file.name}" exceeds the 10MB limit.`);
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       const base64Data = reader.result as string;
@@ -118,7 +137,8 @@ export function useChat({
 
   const sendMessage = useCallback(
     async (content: string) => {
-      if (!content.trim() || isGenerating) return;
+      if (!content.trim() || isGeneratingRef.current) return;
+      isGeneratingRef.current = true;
       setIsActive(true);
       setIsGenerating(true);
 
@@ -188,25 +208,55 @@ export function useChat({
 
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            // Flush any remaining complete event before loop termination
+            if (buffer.trim()) {
+              const lines = buffer.trim().split("\n");
+              let eventType = "message";
+              const dataParts: string[] = [];
+              for (const line of lines) {
+                if (line.startsWith("event: ")) {
+                  eventType = line.replace("event: ", "").trim();
+                } else if (line.startsWith("data: ")) {
+                  dataParts.push(line.replace("data: ", ""));
+                }
+              }
+              const dataStr = dataParts.join("\n").trim();
+              if (dataStr && dataStr !== "[DONE]") {
+                try {
+                  const parsed = JSON.parse(dataStr);
+                  if (eventType === "content" && parsed.chunk) {
+                    updateMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === assistantId ? { ...m, content: m.content + parsed.chunk } : m
+                      )
+                    );
+                  }
+                } catch {}
+              }
+            }
+            break;
+          }
 
           buffer += decoder.decode(value, { stream: true });
+          buffer = buffer.replace(/\r\n/g, "\n");
           const events = buffer.split("\n\n");
           buffer = events.pop() || "";
 
           for (const evt of events) {
             const lines = evt.split("\n");
             let eventType = "message";
-            let dataStr = "";
+            const dataParts: string[] = [];
 
             for (const line of lines) {
               if (line.startsWith("event: ")) {
                 eventType = line.replace("event: ", "").trim();
               } else if (line.startsWith("data: ")) {
-                dataStr = line.replace("data: ", "").trim();
+                dataParts.push(line.replace("data: ", ""));
               }
             }
 
+            const dataStr = dataParts.join("\n").trim();
             if (!dataStr) continue;
             try {
               const parsed = JSON.parse(dataStr);
@@ -336,6 +386,7 @@ export function useChat({
           );
         }
       } finally {
+        isGeneratingRef.current = false;
         setIsGenerating(false);
         abortControllerRef.current = null;
         updateMessages((prev) =>
@@ -350,7 +401,6 @@ export function useChat({
     [
       messages,
       attachments,
-      isGenerating,
       selectedProvider,
       selectedModel,
       sessionId,
@@ -369,12 +419,24 @@ export function useChat({
   );
 
   const loadMessages = useCallback((msgs: Message[]) => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    isGeneratingRef.current = false;
+    setIsGenerating(false);
     setMessages(msgs);
     setAttachments([]);
     setIsActive(msgs.length > 0);
   }, []);
 
   const resetChat = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    isGeneratingRef.current = false;
+    setIsGenerating(false);
     setMessages([]);
     setAttachments([]);
     setIsActive(false);

@@ -1,0 +1,576 @@
+{
+  "summary": {
+    "total": 29,
+    "passed": 29,
+    "failed": 0,
+    "pass_rate_pct": 100.0,
+    "timestamp": "2026-11-24T17:38:09Z"
+  },
+  "results": [
+    {
+      "category": "Providers",
+      "test_id": "GET_PROVIDERS",
+      "description": "List all 5 AI providers and container status",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200,
+      "latency_ms": 178.42,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "count": 5,
+        "providers": [
+          "ollama",
+          "llamacpp",
+          "koboldcpp",
+          "lmstudio",
+          "jan"
+        ]
+      }
+    },
+    {
+      "category": "Providers",
+      "test_id": "GET_PROVIDERS_VRAM",
+      "description": "Query GPU VRAM status and utilization",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200,
+      "latency_ms": 50.26,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "total_mb": 4096.0,
+        "used_mb": 2943.0,
+        "free_mb": 1153.0,
+        "utilization_pct": 71.9
+      }
+    },
+    {
+      "category": "Providers",
+      "test_id": "GET_PROVIDERS_HEALTH",
+      "description": "Provider reachability and health rollup",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200,
+      "latency_ms": 167.25,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "status": "healthy",
+        "online": 1
+      }
+    },
+    {
+      "category": "Providers",
+      "test_id": "GET_PROVIDER_MODELS_VALID",
+      "description": "List models for active provider 'ollama'",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200,
+      "latency_ms": 26.01,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "models_count": 4,
+        "models": [
+          "gemma4:e2b",
+          "qwen3.5:4b",
+          "nomic-embed-text:latest",
+          "qwen2.5-coder:1.5b-base"
+        ]
+      }
+    },
+    {
+      "category": "Providers",
+      "test_id": "GET_PROVIDER_MODELS_INVALID",
+      "description": "Handle unknown provider name (expect 404)",
+      "passed": true,
+      "status_code": 404,
+      "expected_status": 404,
+      "latency_ms": 1.15,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "detail": "Unknown provider 'invalid_provider_xyz'. Supported providers: ['ollama', 'llamacpp', 'koboldcpp', 'lmstudio', 'jan']"
+      }
+    },
+    {
+      "category": "Hub",
+      "test_id": "GET_HUB_MODELS_SPEC",
+      "description": "Inspect GET /api/hub/models vs implemented /api/hub/search",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200,
+      "latency_ms": 438.69,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "message": "Endpoint /api/hub/models is available"
+      }
+    },
+    {
+      "category": "Hub",
+      "test_id": "GET_HUB_SEARCH_DEFAULT",
+      "description": "Search HuggingFace Hub and validate gguf_count > 0",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200,
+      "latency_ms": 564.22,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "results_count": 9,
+        "first_model": "unsloth/Qwen3.8-27B-GGUF",
+        "all_gguf_count_valid": true
+      }
+    },
+    {
+      "category": "Hub",
+      "test_id": "GET_HUB_SEARCH_QUERY",
+      "description": "Search query 'qwen' with tag and architecture parsing",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200,
+      "latency_ms": 310.34,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "count": 5,
+        "matched_query": 5,
+        "models": [
+          "unsloth/Qwen3.8-27B-GGUF",
+          "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF",
+          "huihui-ai/Huihui-Qwen3.8-27B-abliterated-GGUF",
+          "huihui-ai/Huihui-Qwen3.6-35B-A3B-abliterated-MTP-GGUF",
+          "SC117/Qwen3.8-Flash-Next-GSQ-RCO-abliterated-GGUF"
+        ]
+      }
+    },
+    {
+      "category": "Hub",
+      "test_id": "GET_HUB_MODEL_FILES",
+      "description": "Fetch files & quantizations for 'Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF'",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200,
+      "latency_ms": 419.24,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "files_count": 8,
+        "quants": [
+          "Q2_K",
+          "Q3_K_M",
+          "Q4_0",
+          "Q4_K_M",
+          "Q5_0",
+          "Q5_K_M"
+        ],
+        "vram_fits": [
+          "fits",
+          "fits",
+          "fits",
+          "fits",
+          "fits",
+          "fits"
+        ]
+      }
+    },
+    {
+      "category": "Sessions",
+      "test_id": "POST_SESSION_CREATE",
+      "description": "Create a new chat session",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200,
+      "latency_ms": 19.19,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "session_id": "2052d48b-7fa5-470e-9fe7-c68ecdef69b8",
+        "title": "Automated QA Session"
+      }
+    },
+    {
+      "category": "Sessions",
+      "test_id": "GET_SESSIONS_LIST",
+      "description": "List chat sessions with message count and preview",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200,
+      "latency_ms": 9.82,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "total_sessions": 24,
+        "created_session_found": true
+      }
+    },
+    {
+      "category": "Sessions",
+      "test_id": "GET_SESSION_BY_ID",
+      "description": "Retrieve specific session by ID",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200,
+      "latency_ms": 5.24,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "id": "2052d48b-7fa5-470e-9fe7-c68ecdef69b8",
+        "title": "Automated QA Session",
+        "model": "qwen3.5:4b"
+      }
+    },
+    {
+      "category": "Sessions",
+      "test_id": "PATCH_SESSION",
+      "description": "Update session title and model",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200,
+      "latency_ms": 8.56,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "updated_title": "Updated QA Title",
+        "model": "qwen2.5-coder:1.5b-base"
+      }
+    },
+    {
+      "category": "Sessions",
+      "test_id": "GET_SESSION_MESSAGES_EMPTY",
+      "description": "Fetch messages for new session (expect empty list)",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200,
+      "latency_ms": 4.55,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "messages": []
+      }
+    },
+    {
+      "category": "Sessions",
+      "test_id": "GET_SESSION_404",
+      "description": "Fetch non-existent session ID (expect 404)",
+      "passed": true,
+      "status_code": 404,
+      "expected_status": 404,
+      "latency_ms": 3.72,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "detail": "Session not found"
+      }
+    },
+    {
+      "category": "Sessions",
+      "test_id": "DELETE_SESSION_404",
+      "description": "Delete non-existent session ID (expect 404)",
+      "passed": true,
+      "status_code": 404,
+      "expected_status": 404,
+      "latency_ms": 3.2,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "detail": "Session not found"
+      }
+    },
+    {
+      "category": "Chat",
+      "test_id": "POST_CHAT_FAST_MODE",
+      "description": "Fast mode chat completion (no thinking overhead)",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200,
+      "latency_ms": 13.79,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "event_types": [
+          "status",
+          "done",
+          "metrics",
+          "content"
+        ],
+        "content": "Paris",
+        "metrics": {
+          "provider": "ollama",
+          "model": "qwen3.5:4b",
+          "prompt_tokens": 25,
+          "thinking_tokens": 0,
+          "completion_tokens": 2,
+          "total_tokens": 27,
+          "tokens_per_sec": 40.0,
+          "ttft_ms": 607.8,
+          "total_duration_ms": 655.7,
+          "thinking_duration_ms": 0
+        },
+        "done": {
+          "message_id": "75855a80-0fdb-4f4a-b966-eda996f1b69f",
+          "session_id": "2052d48b-7fa5-470e-9fe7-c68ecdef69b8"
+        }
+      }
+    },
+    {
+      "category": "Chat",
+      "test_id": "POST_CHAT_THINKING_MODE",
+      "description": "Thinking mode completion emitting thinking events",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200,
+      "latency_ms": 10.74,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "has_thinking_events": true,
+        "thinking_length": 3823,
+        "metrics": {
+          "provider": "ollama",
+          "model": "qwen3.5:4b",
+          "prompt_tokens": 249,
+          "thinking_tokens": 1056,
+          "completion_tokens": 1005,
+          "total_tokens": 2310,
+          "tokens_per_sec": 38.9,
+          "ttft_ms": 12286.43,
+          "total_duration_ms": 65233.4,
+          "thinking_duration_ms": 52615
+        }
+      }
+    },
+    {
+      "category": "Chat",
+      "test_id": "POST_CHAT_WEB_SEARCH",
+      "description": "Web search grounding injecting sources event and citations",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200,
+      "latency_ms": 6007.86,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "sources_emitted": false,
+        "sources_count": 0,
+        "first_source": null
+      }
+    },
+    {
+      "category": "Chat",
+      "test_id": "POST_CHAT_EMPTY_MESSAGES",
+      "description": "Validate rejection of empty messages list (messages=[])",
+      "passed": true,
+      "status_code": 422,
+      "expected_status": 422,
+      "latency_ms": 2.68,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {}
+    },
+    {
+      "category": "Chat",
+      "test_id": "POST_CHAT_INVALID_PROVIDER",
+      "description": "Invalid provider name handling (expect 400)",
+      "passed": true,
+      "status_code": 400,
+      "expected_status": 400,
+      "latency_ms": 3.02,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "detail": "Unknown provider 'non_existent_engine_999'. Supported providers: ['ollama', 'llamacpp', 'koboldcpp', 'lmstudio', 'jan']"
+      }
+    },
+    {
+      "category": "Chat",
+      "test_id": "POST_CHAT_MISSING_MODEL",
+      "description": "Missing required field 'model' (expect 422)",
+      "passed": true,
+      "status_code": 422,
+      "expected_status": 422,
+      "latency_ms": 2.6,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "error_type": "missing"
+      }
+    },
+    {
+      "category": "Chat",
+      "test_id": "POST_CHAT_MALFORMED_JSON",
+      "description": "Malformed raw JSON syntax (expect 422)",
+      "passed": true,
+      "status_code": 422,
+      "expected_status": 422,
+      "latency_ms": 2.29,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "error_msg": "JSON decode error"
+      }
+    },
+    {
+      "category": "Chat",
+      "test_id": "POST_CHAT_INVALID_TYPES",
+      "description": "Invalid data type for messages field (expect 422)",
+      "passed": true,
+      "status_code": 422,
+      "expected_status": 422,
+      "latency_ms": 2.86,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "error_type": "list_type"
+      }
+    },
+    {
+      "category": "Database",
+      "test_id": "DB_SESSION_RECORD",
+      "description": "Verify session 2052d48b-7fa5-470e-9fe7-c68ecdef69b8 in PostgreSQL",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": null,
+      "latency_ms": 4.81,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "id": "2052d48b-7fa5-470e-9fe7-c68ecdef69b8",
+        "title": "Updated QA Title",
+        "provider": "ollama",
+        "model": "qwen3.5:4b",
+        "created_at": "2026-11-24 17:36:46.250904"
+      }
+    },
+    {
+      "category": "Database",
+      "test_id": "DB_MESSAGES_AND_COLUMNS",
+      "description": "Verify messages, reasoning, and sources_json columns",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": null,
+      "latency_ms": 3.67,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "messages_in_db": 6,
+        "sources_json_persisted": false,
+        "sources_count": 0,
+        "reasoning_persisted": true
+      }
+    },
+    {
+      "category": "Database",
+      "test_id": "DB_MESSAGE_METRICS",
+      "description": "Verify message_metrics table linkage and token counts",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": null,
+      "latency_ms": 4.47,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "metrics_entries": 3,
+        "sample": {
+          "tokens_per_sec": 40.0,
+          "ttft_ms": 607.8,
+          "prompt_tokens": 25,
+          "completion_tokens": 2
+        }
+      }
+    },
+    {
+      "category": "Database",
+      "test_id": "API_GET_SESSION_MESSAGES",
+      "description": "Verify API deserializes sources and metrics correctly",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200,
+      "latency_ms": 14.69,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "messages_count": 6,
+        "assistant_messages": 3,
+        "metrics_joined": true,
+        "sources_parsed": false
+      }
+    },
+    {
+      "category": "Database",
+      "test_id": "DB_CASCADE_DELETION",
+      "description": "Verify ON DELETE CASCADE removes messages and metrics",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200,
+      "latency_ms": 25.48,
+      "schema_valid": true,
+      "schema_error": null,
+      "issue_type": null,
+      "error_message": null,
+      "details": {
+        "session_deleted": true,
+        "orphaned_messages": 0,
+        "cascade_success": true
+      }
+    }
+  ]
+}

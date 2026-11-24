@@ -13,9 +13,9 @@ def strip_thinking_tags(text: str) -> str:
     """
     if not text:
         return ""
-    # Strip complete <think>...</think> blocks
-    cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
-    # Strip any dangling <think> or </think> tags
+    # Strip complete or unclosed <think> blocks (up to </think> or end of string)
+    cleaned = re.sub(r"<think>(?:.*?</think>|.*$)", "", text, flags=re.DOTALL)
+    # Strip any dangling </think> tags
     cleaned = re.sub(r"</?think>", "", cleaned)
     return cleaned.strip()
 
