@@ -149,38 +149,46 @@ def prepare_cross_model_context(
 ) -> List[Dict[str, Any]]:
     """
     Full pipeline for seamless context handoff:
-    1. Injects custom system prompt, cognitive reasoning protocol, and/or search grounding block
-    2. Strips chain-of-thought from prior assistant turns
-    3. Normalizes roles to strict alternation
-    4. Trims history with token-budget sliding window
+    1. Injects custom system prompt, cognitive reasoning protocol, and grounding rules strictly in system role
+    2. Injects clean reference information into the user message without raw XML tags
+    3. Strips chain-of-thought from prior assistant turns
+    4. Normalizes roles to strict alternation
+    5. Trims history with token-budget sliding window
     """
     working_messages = list(messages)
 
-    # Construct effective system prompt
-    effective_system = system_prompt.strip() if (system_prompt and system_prompt.strip()) else ""
+    # 1. Construct effective system prompt
+    system_parts: List[str] = []
+    if system_prompt and system_prompt.strip():
+        system_parts.append(system_prompt.strip())
+    elif enable_thinking:
+        system_parts.append("You are Kultura, a high-precision reasoning AI.")
+
     if enable_thinking:
-        if effective_system:
-            effective_system = f"{effective_system}\n\n{COGNITIVE_REASONING_PROTOCOL}"
-        else:
-            effective_system = f"You are Kultura, a high-precision reasoning AI.\n\n{COGNITIVE_REASONING_PROTOCOL}"
+        system_parts.append(COGNITIVE_REASONING_PROTOCOL)
+
+    if grounding_block and grounding_block.strip():
+        from services.web_search import GROUNDING_SYSTEM_RULES
+        system_parts.append(GROUNDING_SYSTEM_RULES)
+
+    effective_system = "\n\n".join(system_parts).strip()
 
     # Inject system prompt if present
     if effective_system:
         working_messages.insert(0, {"role": "system", "content": effective_system})
 
-    # Normalize roles & strip <think> traces
+    # 2. Normalize roles & strip <think> traces
     normalized = normalize_roles(working_messages)
 
-    # Inject web search grounding block into the latest user message
+    # 3. Inject reference information into the latest user message
     if grounding_block and grounding_block.strip() and normalized:
-        # Find the last user turn
         for i in range(len(normalized) - 1, -1, -1):
             if normalized[i]["role"] == "user":
                 orig_content = normalized[i]["content"]
-                normalized[i]["content"] = f"{grounding_block.strip()}\n\n---\nUser Query: {orig_content}"
+                normalized[i]["content"] = f"{grounding_block.strip()}\n\n---\nUser Question:\n{orig_content}"
                 break
 
-    # Apply sliding window for VRAM & context budget safety
+    # 4. Apply sliding window for VRAM & context budget safety
     final_context = apply_sliding_window(normalized, num_ctx=num_ctx, budget_ratio=0.75)
 
     return final_context

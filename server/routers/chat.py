@@ -13,7 +13,7 @@ from schemas.chat_schemas import ChatCompletionRequest
 from services.orchestrator import orchestrator
 from services.providers import get_provider
 from services.stream_normalizer import StreamNormalizer, build_provider_payload
-from services.web_search import web_search_service
+from services.web_search import web_search_service, should_trigger_web_search
 
 logger = logging.getLogger("kultura.routers.chat")
 router = APIRouter(tags=["chat"])
@@ -125,24 +125,31 @@ async def chat_completions(request: ChatCompletionRequest, db: AsyncSession = De
             for m in request.messages
         ]
 
-    # 4. Optional Live Web Search Grounding
+    # 4. Optional Live Web Search Grounding with Fast Intent Gatekeeper
     web_sources: List[Dict[str, Any]] = []
     grounding_block: Optional[str] = None
     search_notice: Optional[str] = None
+    search_triggered = False
 
     effective_reasoning_budget = request.reasoning_budget if request.enable_thinking else 0
     if request.web_search:
         if user_msg_input and user_msg_input.content.strip():
-            logger.info(f"Running live web search for query: {user_msg_input.content[:60]}")
-            try:
-                web_sources = await web_search_service.search(user_msg_input.content, limit=5)
-                if web_sources:
-                    grounding_block = web_search_service.format_grounding_block(web_sources)
-                else:
-                    search_notice = "Web search returned no results, continuing with local model..."
-            except Exception as e:
-                logger.warning(f"Web search error fallback: {e}")
-                search_notice = "Web search unavailable, continuing with local model..."
+            raw_query = user_msg_input.content.strip()
+            # Fast intent router: skip web search for greetings, chit-chat, pure code, pure math
+            if should_trigger_web_search(raw_query):
+                search_triggered = True
+                logger.info(f"Running live web search for query: {raw_query[:60]}")
+                try:
+                    web_sources = await web_search_service.search(raw_query, limit=5)
+                    if web_sources:
+                        grounding_block = web_search_service.format_grounding_block(web_sources)
+                    else:
+                        search_notice = "Web search returned no results, continuing with local model..."
+                except Exception as e:
+                    logger.warning(f"Web search error fallback: {e}")
+                    search_notice = "Web search unavailable, continuing with local model..."
+            else:
+                logger.info(f"Intent router bypassed web search for conversational query: {raw_query[:40]}")
 
     # 5. Build normalized cross-model payload with frontier headroom
     provider_payload = build_provider_payload(
@@ -164,8 +171,8 @@ async def chat_completions(request: ChatCompletionRequest, db: AsyncSession = De
     async def sse_event_stream() -> AsyncGenerator[str, None]:
         assistant_message_id = str(uuid.uuid4())
         try:
-            # Emit searching status if web search requested
-            if request.web_search:
+            # Emit searching status only if web search was actually triggered
+            if search_triggered:
                 yield f"event: status\ndata: {json.dumps({'status': 'generating', 'stage': 'searching', 'message': 'Searching the web...'})}\n\n"
 
             # Emit web sources if retrieved

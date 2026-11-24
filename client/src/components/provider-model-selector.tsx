@@ -587,17 +587,20 @@ export function ProviderModelSelector({
           <button
             type="button"
             onClick={handleOpenHealthModal}
-            title="Check all providers availability and GPU status"
+            title={`Inference Health: ${onlineProvidersCount}/${providers.length} engines active. Inactive engines sleep to conserve GPU VRAM (Zero-Waste VRAM). Click to inspect.`}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#1C1C1F] hover:bg-[#24242A] border border-[#2E2E33] text-gray-300 hover:text-gray-100 transition-colors cursor-pointer"
           >
             <IconActivity className="w-3 h-3 text-pink-400" />
             <span className="font-medium text-[11px]">Health:</span>
             <span
-              className={`font-mono text-[11px] ${
+              className={`font-mono text-[11px] flex items-center gap-1 ${
                 onlineProvidersCount > 0 ? "text-emerald-400" : "text-amber-400"
               }`}
             >
-              {onlineProvidersCount}/{providers.length}
+              <span>{onlineProvidersCount}/{providers.length}</span>
+              {onlineProvidersCount > 0 && onlineProvidersCount < providers.length && (
+                <span className="text-[10px] text-zinc-400 font-sans font-normal">(On-Demand)</span>
+              )}
             </span>
           </button>
 

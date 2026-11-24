@@ -4,7 +4,7 @@
     "passed": 29,
     "failed": 0,
     "pass_rate_pct": 100.0,
-    "timestamp": "2026-11-24T17:38:09Z"
+    "timestamp": "2026-11-24T19:06:27Z"
   },
   "results": [
     {
@@ -14,7 +14,7 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 178.42,
+      "latency_ms": 140.45,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -37,16 +37,16 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 50.26,
+      "latency_ms": 35.24,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
       "error_message": null,
       "details": {
         "total_mb": 4096.0,
-        "used_mb": 2943.0,
-        "free_mb": 1153.0,
-        "utilization_pct": 71.9
+        "used_mb": 2939.0,
+        "free_mb": 1157.0,
+        "utilization_pct": 71.8
       }
     },
     {
@@ -56,14 +56,14 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 167.25,
+      "latency_ms": 166.71,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
       "error_message": null,
       "details": {
         "status": "healthy",
-        "online": 1
+        "online": 2
       }
     },
     {
@@ -73,7 +73,7 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 26.01,
+      "latency_ms": 16.45,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -95,7 +95,7 @@
       "passed": true,
       "status_code": 404,
       "expected_status": 404,
-      "latency_ms": 1.15,
+      "latency_ms": 1.16,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -111,7 +111,7 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 438.69,
+      "latency_ms": 1213.51,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -127,7 +127,7 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 564.22,
+      "latency_ms": 1573.87,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -145,7 +145,7 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 310.34,
+      "latency_ms": 334.19,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -169,7 +169,7 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 419.24,
+      "latency_ms": 707.64,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -201,13 +201,13 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 19.19,
+      "latency_ms": 6.92,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
       "error_message": null,
       "details": {
-        "session_id": "2052d48b-7fa5-470e-9fe7-c68ecdef69b8",
+        "session_id": "73c77ee4-38e0-486f-ae22-cb4bfb02b653",
         "title": "Automated QA Session"
       }
     },
@@ -218,13 +218,13 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 9.82,
+      "latency_ms": 8.94,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
       "error_message": null,
       "details": {
-        "total_sessions": 24,
+        "total_sessions": 28,
         "created_session_found": true
       }
     },
@@ -235,13 +235,13 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 5.24,
+      "latency_ms": 6.36,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
       "error_message": null,
       "details": {
-        "id": "2052d48b-7fa5-470e-9fe7-c68ecdef69b8",
+        "id": "73c77ee4-38e0-486f-ae22-cb4bfb02b653",
         "title": "Automated QA Session",
         "model": "qwen3.5:4b"
       }
@@ -253,7 +253,7 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 8.56,
+      "latency_ms": 7.53,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -270,7 +270,7 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 4.55,
+      "latency_ms": 6.05,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -286,7 +286,7 @@
       "passed": true,
       "status_code": 404,
       "expected_status": 404,
-      "latency_ms": 3.72,
+      "latency_ms": 2.5,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -302,7 +302,7 @@
       "passed": true,
       "status_code": 404,
       "expected_status": 404,
-      "latency_ms": 3.2,
+      "latency_ms": 3.44,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -318,17 +318,17 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 13.79,
+      "latency_ms": 8.59,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
       "error_message": null,
       "details": {
         "event_types": [
+          "content",
           "status",
-          "done",
           "metrics",
-          "content"
+          "done"
         ],
         "content": "Paris",
         "metrics": {
@@ -339,13 +339,13 @@
           "completion_tokens": 2,
           "total_tokens": 27,
           "tokens_per_sec": 40.0,
-          "ttft_ms": 607.8,
-          "total_duration_ms": 655.7,
+          "ttft_ms": 430.51,
+          "total_duration_ms": 474.0,
           "thinking_duration_ms": 0
         },
         "done": {
-          "message_id": "75855a80-0fdb-4f4a-b966-eda996f1b69f",
-          "session_id": "2052d48b-7fa5-470e-9fe7-c68ecdef69b8"
+          "message_id": "f2e518ef-0e6a-4bcf-92e7-fbef660e4979",
+          "session_id": "73c77ee4-38e0-486f-ae22-cb4bfb02b653"
         }
       }
     },
@@ -356,25 +356,25 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 10.74,
+      "latency_ms": 8.57,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
       "error_message": null,
       "details": {
         "has_thinking_events": true,
-        "thinking_length": 3823,
+        "thinking_length": 3985,
         "metrics": {
           "provider": "ollama",
           "model": "qwen3.5:4b",
           "prompt_tokens": 249,
-          "thinking_tokens": 1056,
-          "completion_tokens": 1005,
-          "total_tokens": 2310,
-          "tokens_per_sec": 38.9,
-          "ttft_ms": 12286.43,
-          "total_duration_ms": 65233.4,
-          "thinking_duration_ms": 52615
+          "thinking_tokens": 1103,
+          "completion_tokens": 1072,
+          "total_tokens": 2424,
+          "tokens_per_sec": 36.8,
+          "ttft_ms": 10689.9,
+          "total_duration_ms": 69738.5,
+          "thinking_duration_ms": 58640
         }
       }
     },
@@ -385,15 +385,21 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 6007.86,
+      "latency_ms": 628.27,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
       "error_message": null,
       "details": {
-        "sources_emitted": false,
-        "sources_count": 0,
-        "first_source": null
+        "sources_emitted": true,
+        "sources_count": 5,
+        "first_source": {
+          "index": 1,
+          "title": "hotstar - Official Site",
+          "url": "http://www.hotstar.com/",
+          "domain": "hotstar.com",
+          "snippet": "Hotstar - Watch free online streaming of your favourite TV serials & movies - Hindi, Tamil, Bengali & more with Live cricket streaming \u2026Read more"
+        }
       }
     },
     {
@@ -403,7 +409,7 @@
       "passed": true,
       "status_code": 422,
       "expected_status": 422,
-      "latency_ms": 2.68,
+      "latency_ms": 5.01,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -417,7 +423,7 @@
       "passed": true,
       "status_code": 400,
       "expected_status": 400,
-      "latency_ms": 3.02,
+      "latency_ms": 2.3,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -433,7 +439,7 @@
       "passed": true,
       "status_code": 422,
       "expected_status": 422,
-      "latency_ms": 2.6,
+      "latency_ms": 2.35,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -449,7 +455,7 @@
       "passed": true,
       "status_code": 422,
       "expected_status": 422,
-      "latency_ms": 2.29,
+      "latency_ms": 1.47,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -465,7 +471,7 @@
       "passed": true,
       "status_code": 422,
       "expected_status": 422,
-      "latency_ms": 2.86,
+      "latency_ms": 2.65,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -477,21 +483,21 @@
     {
       "category": "Database",
       "test_id": "DB_SESSION_RECORD",
-      "description": "Verify session 2052d48b-7fa5-470e-9fe7-c68ecdef69b8 in PostgreSQL",
+      "description": "Verify session 73c77ee4-38e0-486f-ae22-cb4bfb02b653 in PostgreSQL",
       "passed": true,
       "status_code": 200,
       "expected_status": null,
-      "latency_ms": 4.81,
+      "latency_ms": 5.45,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
       "error_message": null,
       "details": {
-        "id": "2052d48b-7fa5-470e-9fe7-c68ecdef69b8",
+        "id": "73c77ee4-38e0-486f-ae22-cb4bfb02b653",
         "title": "Updated QA Title",
         "provider": "ollama",
         "model": "qwen3.5:4b",
-        "created_at": "2026-11-24 17:36:46.250904"
+        "created_at": "2026-11-24 19:05:04.622418"
       }
     },
     {
@@ -501,15 +507,15 @@
       "passed": true,
       "status_code": 200,
       "expected_status": null,
-      "latency_ms": 3.67,
+      "latency_ms": 2.35,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
       "error_message": null,
       "details": {
         "messages_in_db": 6,
-        "sources_json_persisted": false,
-        "sources_count": 0,
+        "sources_json_persisted": true,
+        "sources_count": 5,
         "reasoning_persisted": true
       }
     },
@@ -520,7 +526,7 @@
       "passed": true,
       "status_code": 200,
       "expected_status": null,
-      "latency_ms": 4.47,
+      "latency_ms": 2.67,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -529,7 +535,7 @@
         "metrics_entries": 3,
         "sample": {
           "tokens_per_sec": 40.0,
-          "ttft_ms": 607.8,
+          "ttft_ms": 430.51,
           "prompt_tokens": 25,
           "completion_tokens": 2
         }
@@ -542,7 +548,7 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 14.69,
+      "latency_ms": 13.22,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -551,7 +557,7 @@
         "messages_count": 6,
         "assistant_messages": 3,
         "metrics_joined": true,
-        "sources_parsed": false
+        "sources_parsed": true
       }
     },
     {
@@ -561,7 +567,7 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 25.48,
+      "latency_ms": 23.77,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,

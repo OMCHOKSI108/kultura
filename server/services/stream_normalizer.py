@@ -101,6 +101,18 @@ def build_provider_payload(
         if effective_max_tokens <= reasoning_budget:
             effective_max_tokens = reasoning_budget + 1024
 
+    stop_tokens = [
+        "<|im_end|>",
+        "<|endoftext|>",
+        "### Reference Information",
+        "### Reference Information:",
+        "User Question:",
+        "<search_results>",
+        "</search_results>",
+        "<grounding_instructions>",
+        "</grounding_instructions>",
+    ]
+
     payload: Dict[str, Any] = {
         "model": model,
         "messages": formatted_messages,
@@ -110,11 +122,13 @@ def build_provider_payload(
         "presence_penalty": 0.1,
         "frequency_penalty": 0.1,
         "stream": True,
+        "stop": stop_tokens,
         "options": {
             "num_ctx": effective_num_ctx,
             "num_predict": effective_max_tokens,
             "temperature": temperature,
             "repeat_penalty": repeat_penalty,
+            "stop": stop_tokens,
         },
     }
 
@@ -139,6 +153,13 @@ def build_provider_payload(
     return payload
 
 
+PROMPT_LEAK_REGEX = re.compile(
+    r"^[\s\n]*(?:<search_results[\s\S]*?</search_results>|<grounding_instructions>[\s\S]*?</grounding_instructions>|"
+    r"### Reference Information[\s\S]*?User Question:\s*|User Question:\s*)",
+    re.IGNORECASE,
+)
+
+
 class StreamNormalizer:
     """
     Normalizes divergent SSE outputs across Ollama, llama.cpp, KoboldCpp, LM Studio, and Jan.
@@ -161,6 +182,9 @@ class StreamNormalizer:
         self.in_think_tag: bool = False
         self.partial_tag_buffer: str = ""
 
+        self.in_prompt_leakage: bool = False
+        self.leakage_buffer: str = ""
+
         self.thinking_tokens: int = 0
         self.completion_tokens: int = 0
         self.prompt_tokens: int = 0
@@ -170,6 +194,19 @@ class StreamNormalizer:
             return 0
         # Standard heuristic ~ 1 token per 3.8 chars or word count based
         return max(1, int(len(text) / 3.8))
+
+    def _filter_leakage(self, text: str) -> str:
+        if not text:
+            return ""
+        if not self.full_content:
+            text = PROMPT_LEAK_REGEX.sub("", text)
+            text = re.sub(
+                r"^[\s\n]*(?:<search_results[^>]*>|<grounding_instructions>|### Reference Information[^\n]*|User Question:)",
+                "",
+                text,
+                flags=re.IGNORECASE,
+            ).lstrip()
+        return text
 
     async def normalize_stream(
         self, raw_stream: AsyncGenerator[str, None]
@@ -257,6 +294,26 @@ class StreamNormalizer:
                     combined = self.partial_tag_buffer + content
                     self.partial_tag_buffer = ""
 
+                    # Detect and intercept prompt template echo (<search_results>, <grounding_instructions>, User Question:)
+                    if not self.full_content and not self.in_prompt_leakage:
+                        if re.search(r"^\s*(?:<search_results|### Reference Information|<grounding_instructions|User Question:)", combined, re.IGNORECASE):
+                            self.in_prompt_leakage = True
+
+                    if self.in_prompt_leakage:
+                        self.leakage_buffer += combined
+                        combined = ""
+                        m = re.search(
+                            r"(?:</grounding_instructions>\s*(?:User Question:[^\n]*\n?)?|User Question:[^\n]*\n|### Reference Information[\s\S]*?User Question:[^\n]*\n)",
+                            self.leakage_buffer,
+                            re.IGNORECASE,
+                        )
+                        if m:
+                            combined = self.leakage_buffer[m.end():]
+                            self.leakage_buffer = ""
+                            self.in_prompt_leakage = False
+                        else:
+                            continue
+
                     OPEN_TAG_PREFIXES = ("<think", "<thin", "<thi", "<th", "<t", "<")
                     CLOSE_TAG_PREFIXES = ("</think", "</thin", "</thi", "</th", "</t", "</", "<")
 
@@ -264,6 +321,7 @@ class StreamNormalizer:
                         if not self.in_think_tag:
                             if "<think>" in combined:
                                 before, after = combined.split("<think>", 1)
+                                before = self._filter_leakage(before)
                                 if before:
                                     self.full_content.append(before)
                                     self.completion_tokens += self._estimate_tokens(before)
@@ -278,7 +336,7 @@ class StreamNormalizer:
                                 matched_p = next(p for p in OPEN_TAG_PREFIXES if combined.endswith(p))
                                 idx = len(combined) - len(matched_p)
                                 self.partial_tag_buffer = combined[idx:]
-                                regular = combined[:idx]
+                                regular = self._filter_leakage(combined[:idx])
                                 if regular:
                                     self.full_content.append(regular)
                                     self.completion_tokens += self._estimate_tokens(regular)
@@ -286,10 +344,12 @@ class StreamNormalizer:
                                     yield ("content", json.dumps({"chunk": regular, "metrics": metrics_snap}), metrics_snap)
                                 break
                             else:
-                                self.full_content.append(combined)
-                                self.completion_tokens += self._estimate_tokens(combined)
-                                metrics_snap = self.get_metrics_snapshot()
-                                yield ("content", json.dumps({"chunk": combined, "metrics": metrics_snap}), metrics_snap)
+                                regular = self._filter_leakage(combined)
+                                if regular:
+                                    self.full_content.append(regular)
+                                    self.completion_tokens += self._estimate_tokens(regular)
+                                    metrics_snap = self.get_metrics_snapshot()
+                                    yield ("content", json.dumps({"chunk": regular, "metrics": metrics_snap}), metrics_snap)
                                 combined = ""
                         else:
                             if "</think>" in combined:

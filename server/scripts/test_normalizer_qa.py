@@ -35,6 +35,7 @@ from services.web_search import (
     is_english_query,
     get_timelimit,
     web_search_service,
+    should_trigger_web_search,
     SPAM_DOMAINS,
 )
 
@@ -969,6 +970,97 @@ class QATestRunner:
 
         self.add_result(res)
 
+    def test_web_search_intent_router(self):
+        """Test should_trigger_web_search intent routing on conversational vs informational queries."""
+        res = TestResult("should_trigger_web_search conversational intent filtering", "WebSearch")
+
+        # Conversational greetings / chit-chat (must return False)
+        greetings = [
+            "heyy", "Hey!", "hello", "hi", "good morning", "Good night owl",
+            "sup", "yo", "thanks", "thank you", "bye", "ok", "cool",
+            "who are you", "what is your name", "tell me a joke",
+            "2 + 2", "15 * 45", "def add(a, b): return a + b"
+        ]
+        for g in greetings:
+            if should_trigger_web_search(g):
+                res.fail(f"Conversational query '{g}' incorrectly triggered web search", "logic_bug")
+                break
+
+        # Genuine information queries (must return True)
+        searches = [
+            "what is the weather in Tokyo today",
+            "latest news on deepseek",
+            "current price of Bitcoin",
+            "who won the 2024 election",
+            "search online for python 3.14 release notes",
+        ]
+        for s in searches:
+            if not should_trigger_web_search(s):
+                res.fail(f"Informational query '{s}' failed to trigger web search", "logic_bug")
+                break
+
+        self.add_result(res)
+
+    def test_web_search_html_unescaping(self):
+        """Test that _filter_results decodes raw HTML entities (&quot;, &#39;, &amp;)."""
+        res = TestResult("_filter_results HTML entity decoding", "WebSearch")
+
+        raw_sources = [
+            {
+                "url": "https://knowyourmeme.com/editorials/guides/what-does-heyy-mean",
+                "title": 'What Does &quot;HEYY&quot; Mean? Here&#39;s the &amp; Guide',
+                "snippet": "Urban dictionary says &quot;heyy&quot; with two y&#39;s indicates interest.",
+            }
+        ]
+
+        filtered = web_search_service._filter_results(raw_sources, limit=5, is_english=True)
+        if not filtered:
+            res.fail("Source was filtered out unexpectedly", "logic_bug")
+        else:
+            title = filtered[0]["title"]
+            snippet = filtered[0]["snippet"]
+            if "&quot;" in title or "&#39;" in title or "&amp;" in title:
+                res.fail(f"Raw HTML entities found in filtered title: '{title}'", "logic_bug")
+            if "&quot;" in snippet or "&#39;" in snippet:
+                res.fail(f"Raw HTML entities found in filtered snippet: '{snippet}'", "logic_bug")
+
+        self.add_result(res)
+
+    async def test_stream_prompt_leakage_filter(self):
+        """Test that StreamNormalizer discards prompt template tags echoed by small models."""
+        res = TestResult("Prompt leakage suppression in StreamNormalizer", "StreamNormalizer")
+
+        # Simulate small model echoing <search_results> and <grounding_instructions> before answer
+        simulated_raw = [
+            'data: {"choices": [{"delta": {"content": "<search_results date=\\"2026-11-24\\">\\n"}}]}\n\n',
+            'data: {"choices": [{"delta": {"content": "The following verified search snippets represent ground truth:\\n"}}]}\n\n',
+            'data: {"choices": [{"delta": {"content": "</search_results>\\n<grounding_instructions>\\n1. Ground all facts.\\n</grounding_instructions>\\n"}}]}\n\n',
+            'data: {"choices": [{"delta": {"content": "User Question: heyy\\n"}}]}\n\n',
+            'data: {"choices": [{"delta": {"content": "Hey there! How can I help you today?"}}]}\n\n',
+            "data: [DONE]\n\n",
+        ]
+
+        async def _mock_stream():
+            for line in simulated_raw:
+                yield line
+
+        normalizer = StreamNormalizer(provider="llamacpp", model="qwen2.5-coder:1.5b")
+        emitted_chunks = []
+        async for event_type, data_json, _ in normalizer.normalize_stream(_mock_stream()):
+            if event_type == "content":
+                chunk_data = json.loads(data_json)
+                emitted_chunks.append(chunk_data.get("chunk", ""))
+
+        full_output = "".join(emitted_chunks)
+        if "<search_results" in full_output or "<grounding_instructions>" in full_output:
+            res.fail(f"Leaked prompt tags found in emitted content: {full_output}", "security_vulnerability")
+        if "User Question:" in full_output:
+            res.fail(f"Leaked 'User Question:' prefix in emitted content: {full_output}", "logic_bug")
+        if "Hey there! How can I help you today?" not in full_output:
+            res.fail(f"Valid answer content was accidentally dropped: {full_output}", "logic_bug")
+
+        self.add_result(res)
+
     # =========================================================================
     # RUN ALL TESTS
     # =========================================================================
@@ -991,6 +1083,7 @@ class QATestRunner:
         await self.test_stream_non_json_data()
         await self.test_stream_unicode_multibyte_split()
         await self.test_stream_native_reasoning_field()
+        await self.test_stream_prompt_leakage_filter()
 
         print("\n--- 2. ContextManager QA Tests ---")
         self.test_context_strict_alternation()
@@ -1009,6 +1102,8 @@ class QATestRunner:
         self.test_web_search_filter_results_limit_zero()
         self.test_web_search_filter_results_malicious_schemes()
         self.test_web_search_grounding_prompt_and_xml_injection()
+        self.test_web_search_intent_router()
+        self.test_web_search_html_unescaping()
 
         print("\n" + "=" * 80)
         print("  QA TEST EXECUTION SUMMARY")

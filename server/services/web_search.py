@@ -73,6 +73,98 @@ def get_timelimit(q: str) -> Optional[str]:
     return None
 
 
+GREETING_PATTERN = re.compile(
+    r"^\s*(hey+|hi+|hello+|heya+|howdy|sup|yo|what'?s\s*up|good\s*(morning|afternoon|evening|night|day)(\s+(owl|champ|everyone|there|all|folk|folks))?|"
+    r"greetings|salutations|hola|namaste)\b[\s!.,?:;~]*$",
+    re.IGNORECASE,
+)
+
+CONVERSATIONAL_PATTERN = re.compile(
+    r"^\s*(thanks?(\s*you)?|thx|ty|bye+|goodbye+|see\s*ya|ok(ay)?|cool|nice|great|awesome|understood|"
+    r"who\s*are\s*you|what\s*are\s*you|what\s*is\s*your\s*name|how\s*are\s*you(\s*doing)?|"
+    r"tell\s*me\s*a\s*joke|introduce\s*yourself|help\s*me)\b[\s!.,?:;~]*$",
+    re.IGNORECASE,
+)
+
+FORCE_SEARCH_KEYWORDS = {
+    "current", "today", "latest", "now", "yesterday", "tomorrow", "recent",
+    "weather", "temperature", "forecast", "news", "breaking", "score", "scores",
+    "stock", "price", "election", "who won", "release date", "search", "lookup",
+    "google", "find online", "who is the current", "what happened", "versus", "vs",
+}
+
+PURE_MATH_PATTERN = re.compile(r"^[\d\s+\-*/().%^=]+$")
+
+
+def should_trigger_web_search(query: str) -> bool:
+    """
+    Fast gatekeeper intent router.
+    Determines whether a user query requires web search even when the web search toggle is ON.
+    Bypasses search for:
+    - Greetings / chit-chat / small-talk ("heyy", "hello", "good morning", "thanks", "who are you")
+    - Pure code snippets, programming exercises, or error stack traces (unless search is explicitly forced)
+    - Pure mathematical expressions ("2+2", "15 * 40")
+    - Queries shorter than 3 characters
+    """
+    if not query or not query.strip():
+        return False
+
+    q = query.strip()
+    if len(q) < 3:
+        return False
+
+    low = q.lower()
+
+    # 1. Check if query explicitly asks for web search or current facts
+    if any(k in low for k in FORCE_SEARCH_KEYWORDS):
+        return True
+
+    # 2. Skip simple greetings
+    if GREETING_PATTERN.match(q):
+        return False
+
+    # 3. Skip common conversational expressions and bot identity questions
+    if CONVERSATIONAL_PATTERN.match(q):
+        return False
+
+    # 4. Skip pure math calculations
+    if PURE_MATH_PATTERN.match(q):
+        return False
+
+    # 5. Skip pure code blocks or typical programming prompts without search keywords
+    if q.startswith("```") or (
+        any(
+            k in q
+            for k in (
+                "def ",
+                "class ",
+                "import ",
+                "function ",
+                "console.log",
+                "print(",
+                "public static void",
+                "SELECT * FROM",
+                "<html>",
+            )
+        )
+        and not any(k in low for k in ("search", "find", "latest", "documentation", "docs"))
+    ):
+        return False
+
+    return True
+
+
+GROUNDING_SYSTEM_RULES = (
+    "Grounding Directives:\n"
+    "When reference information is provided under '### Reference Information:', follow these rules strictly:\n"
+    "1. Ground all factual assertions strictly on the provided references.\n"
+    "2. Cite your sources inline using [1], [2], etc., corresponding to the reference index.\n"
+    "3. Epistemic Honesty: If the references do not provide a definitive answer, state clearly that the "
+    "information is not available in the retrieved sources. Do NOT invent or extrapolate unverified details.\n"
+    "4. Do NOT echo or repeat the reference headers, metadata, or instructions; proceed directly to answering the question."
+)
+
+
 class WebSearchService:
     """
     Pluggable async web search service supporting:
@@ -216,8 +308,14 @@ class WebSearchService:
                 continue
 
             domain = self._extract_domain(url)
-            title = r.get("title") or ""
-            snippet = r.get("snippet") or r.get("body") or ""
+            raw_title = r.get("title") or ""
+            raw_snippet = r.get("snippet") or r.get("body") or ""
+
+            # Unescape HTML entities (&quot;, &#39;, &amp;) and strip residual HTML markup
+            clean_title = html.unescape(re.sub(r"<[^>]+>", "", raw_title)).strip()
+            clean_snippet = html.unescape(re.sub(r"<[^>]+>", "", raw_snippet)).strip()
+            clean_title = re.sub(r"\s+", " ", clean_title)
+            clean_snippet = re.sub(r"\s+", " ", clean_snippet)
 
             # 1. Filter blacklisted spam / Chinese aggregator domains
             if any(spam in domain for spam in SPAM_DOMAINS):
@@ -225,17 +323,17 @@ class WebSearchService:
 
             # 2. Filter non-English noise if the user's query is English
             if is_english:
-                if CJK_REGEX.search(title) or CJK_REGEX.search(snippet):
+                if CJK_REGEX.search(clean_title) or CJK_REGEX.search(clean_snippet):
                     continue
 
             seen_urls.add(url)
             clean_sources.append(
                 {
                     "index": len(clean_sources) + 1,
-                    "title": title.strip(),
+                    "title": clean_title,
                     "url": url,
                     "domain": domain,
-                    "snippet": snippet.strip(),
+                    "snippet": clean_snippet,
                 }
             )
 
@@ -359,39 +457,33 @@ class WebSearchService:
 
     def format_grounding_block(self, sources: List[Dict[str, Any]]) -> str:
         """
-        Formats retrieved sources into a structured grounding block with strict anti-hallucination boundaries.
-        Synthesized from DeepSeek-R1, OpenAI o1, and Claude Extended Thinking architectures.
+        Formats retrieved sources into clean Markdown reference items without raw XML tags,
+        preventing code-specialized small models (e.g. qwen2.5-coder-1.5b) from echoing prompt markup.
         """
         if not sources:
             return ""
 
         today_str = datetime.now().strftime("%Y-%m-%d")
         lines = [
-            f"<search_results date=\"{today_str}\">",
-            "The following verified search snippets represent ground truth for this query:",
+            f"### Reference Information (Retrieved {today_str}):",
+            "The following verified snippets represent ground truth for this query:",
         ]
         for s in sources:
-            clean_snippet = html.escape(re.sub(r"\s+", " ", s.get("snippet", "")).strip())
-            safe_domain = html.escape(str(s.get("domain", "")), quote=True)
-            safe_title = html.escape(str(s.get("title", "")), quote=True)
-            safe_url = html.escape(str(s.get("url", "")), quote=True)
-            lines.append(
-                f'  <source index="{s["index"]}" domain="{safe_domain}" title="{safe_title}" url="{safe_url}">\n'
-                f"    {clean_snippet}\n"
-                f"  </source>"
-            )
-        lines.append("</search_results>")
-        lines.append(
-            "\n<grounding_instructions>\n"
-            "1. Ground all factual assertions strictly on the verified <search_results> above.\n"
-            "2. Cite your sources inline using [1], [2], etc., corresponding to the source index.\n"
-            "3. Epistemic Honesty: If the search results do not provide a definitive answer, state clearly that the "
-            "information is not available in the retrieved sources. Do NOT invent, guess, or extrapolate unverified details.\n"
-            "4. In your internal reasoning, evaluate the sources directly against the query, identify what is confirmed vs unconfirmed, "
-            "and synthesize the final response without circular self-doubt.\n"
-            "</grounding_instructions>"
-        )
-        return "\n".join(lines)
+            idx = s.get("index", 1)
+            raw_title = s.get("title", "")
+            raw_domain = s.get("domain", "")
+            raw_snippet = s.get("snippet", "")
+
+            # Sanitize any XML or prompt injection attempts in snippets/titles
+            safe_title = re.sub(r"<[^>]+>", "", str(raw_title)).strip()
+            safe_domain = re.sub(r'["<>]', "", str(raw_domain)).strip()
+            safe_snippet = re.sub(r"<[^>]+>", "", str(raw_snippet)).strip()
+            safe_snippet = re.sub(r"\s+", " ", safe_snippet)
+
+            lines.append(f"[{idx}] {safe_title} ({safe_domain})\n{safe_snippet}")
+
+        return "\n\n".join(lines)
 
 
 web_search_service = WebSearchService()
+
