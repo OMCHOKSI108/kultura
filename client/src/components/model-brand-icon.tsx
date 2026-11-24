@@ -38,11 +38,12 @@ export function ModelBrandIcon({
     return <Qwen.Color size={size} className={className} />;
   }
 
-  // Gemma / Google
-  if (text.includes("gemma")) {
-    return <Gemma.Color size={size} className={className} />;
-  }
-  if (text.includes("google")) {
+  // Google / Gemini / Gemma -> Official Google 'G' Logo
+  if (
+    text.includes("gemini") ||
+    text.includes("gemma") ||
+    text.includes("google")
+  ) {
     return <Google.Color size={size} className={className} />;
   }
 
