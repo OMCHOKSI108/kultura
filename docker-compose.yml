@@ -1,0 +1,170 @@
+services:
+  # ── Next.js 16 Frontend (Kultura UI) ──
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_SERVER_URL=${NEXT_PUBLIC_SERVER_URL:-http://localhost:8000}
+        - NEXT_PUBLIC_CLIENT_URL=${NEXT_PUBLIC_CLIENT_URL:-http://localhost:3000}
+    image: ${DOCKER_HUB_USER:-omchoksi}/kultura-frontend:latest
+    container_name: kultura-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_SERVER_URL=${NEXT_PUBLIC_SERVER_URL:-http://localhost:8000}
+      - NEXT_PUBLIC_CLIENT_URL=${NEXT_PUBLIC_CLIENT_URL:-http://localhost:3000}
+    depends_on:
+      - gateway
+    networks:
+      - kultura-net
+
+  # ── Gateway Orchestrator (Zero-Waste VRAM Manager) ──
+  gateway:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+      args:
+        - DOWNLOAD_MODELS=${DOWNLOAD_MODELS:-false}
+    image: ${DOCKER_HUB_USER:-omchoksi}/kultura-gateway:latest
+    container_name: kultura-gateway
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-kultura}:${POSTGRES_PASSWORD:-kultura}@db:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-kultura}
+      - MODELS_DIR=${MODELS_DIR:-/models}
+      - DOCKER_HOST=${DOCKER_HOST:-unix:///var/run/docker.sock}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
+      - LLAMACPP_BASE_URL=${LLAMACPP_BASE_URL:-http://llamacpp:8080}
+      - KOBOLDCPP_BASE_URL=${KOBOLDCPP_BASE_URL:-http://koboldcpp:5001}
+      - LMSTUDIO_BASE_URL=${LMSTUDIO_BASE_URL:-http://host.docker.internal:1234}
+      - JAN_BASE_URL=${JAN_BASE_URL:-http://host.docker.internal:1337}
+      - AUTO_UNLOAD_MINUTES=${AUTO_UNLOAD_MINUTES:-10}
+    devices:
+      - /dev/nvidia0:/dev/nvidia0
+      - /dev/nvidiactl:/dev/nvidiactl
+      - /dev/nvidia-uvm:/dev/nvidia-uvm
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./models:/models
+      - /usr/bin/nvidia-smi:/usr/bin/nvidia-smi:ro
+      - /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1:/usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - kultura-net
+
+  # ── Strict PostgreSQL 16 Persistence ──
+  db:
+    image: postgres:16-alpine
+    container_name: kultura-db
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-kultura}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-kultura}
+      - POSTGRES_DB=${POSTGRES_DB:-kultura}
+    ports:
+      - "${POSTGRES_HOST_PORT:-5434}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kultura} -d ${POSTGRES_DB:-kultura}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kultura-net
+
+  # ── Ollama Engine (Zero-Setup Docker Native) ──
+  ollama:
+    build:
+      context: .
+      dockerfile: Dockerfile.ollama
+    image: kultura-ollama:local
+    container_name: kultura-ollama
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_HOST_PORT:-11435}:11434"
+    expose:
+      - "11434"
+    devices:
+      - /dev/nvidia0:/dev/nvidia0
+      - /dev/nvidiactl:/dev/nvidiactl
+      - /dev/nvidia-uvm:/dev/nvidia-uvm
+    volumes:
+      - /usr/lib/x86_64-linux-gnu/libcuda.so.1:/usr/lib/x86_64-linux-gnu/libcuda.so.1:ro
+      - /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1:/usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1:ro
+      - ollama_data:/root/.ollama
+      - ./models:/models:ro
+      - /usr/share/ollama/.ollama/models:/root/.ollama/models
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+      - OLLAMA_MODELS=/root/.ollama/models
+      - OLLAMA_KEEP_ALIVE=10m
+    networks:
+      - kultura-net
+
+  # ── llama.cpp Engine (On-Demand / Single-Active) ──
+  llamacpp:
+    image: ghcr.io/ggml-org/llama.cpp:server-cuda
+    container_name: kultura-llamacpp
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./models:/models:ro
+    command: >
+      --host 0.0.0.0 --port 8080 -ngl 99 -m /models/qwen3.5-4b.gguf
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - kultura-net
+    profiles:
+      - on-demand
+      - all
+
+  # ── KoboldCpp Engine (On-Demand / Single-Active) ──
+  koboldcpp:
+    image: ghcr.io/lostruins/koboldcpp:latest
+    container_name: kultura-koboldcpp
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./models:/models:ro
+    command: >
+      /models/qwen3.5-4b.gguf 5001 --usecublas --gpulayers 99
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - kultura-net
+    profiles:
+      - on-demand
+      - all
+
+networks:
+  kultura-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  ollama_data:

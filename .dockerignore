@@ -1,0 +1,7 @@
+models/
+*.gguf
+node_modules/
+client/node_modules/
+.git/
+.next/
+*.log

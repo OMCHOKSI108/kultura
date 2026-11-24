@@ -1,0 +1,20 @@
+FROM python:3.12-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    pciutils \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY bin/ollama /usr/local/bin/ollama
+COPY bin/ollama_lib /usr/local/lib/ollama
+RUN chmod +x /usr/local/bin/ollama
+
+ENV LD_LIBRARY_PATH=/usr/local/lib/ollama:/usr/local/lib/ollama/cuda_v12:$LD_LIBRARY_PATH
+ENV OLLAMA_HOST=0.0.0.0:11434
+ENV OLLAMA_MODELS=/root/.ollama/models
+ENV OLLAMA_KEEP_ALIVE=10m
+
+EXPOSE 11434
+
+ENTRYPOINT ["/usr/local/bin/ollama", "serve"]

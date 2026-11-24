@@ -1,17 +1,34 @@
 import { PixelMBare } from "./brand-logo";
 import { PromptComposer } from "./prompt-composer";
-import type { FileAttachment } from "@/types/chat";
+import type { FileAttachment, ChatInferenceSettings } from "@/types/chat";
 
 interface WelcomeScreenProps {
   onSend: (content: string) => void;
+  onStop?: () => void;
   onAddFile: (file: File) => void;
   onRemoveFile: (id: string) => void;
   attachments: FileAttachment[];
-  selectedModel: string;
-  onModelChange: (m: string) => void;
+  disabled?: boolean;
+  isGenerating?: boolean;
+  isModelReady?: boolean;
+  selectedModel?: string;
+  settings?: ChatInferenceSettings;
+  onUpdateSettings?: (newSettings: Partial<ChatInferenceSettings>) => void;
 }
 
-export function WelcomeScreen({ onSend, onAddFile, onRemoveFile, attachments, selectedModel, onModelChange }: WelcomeScreenProps) {
+export function WelcomeScreen({
+  onSend,
+  onStop,
+  onAddFile,
+  onRemoveFile,
+  attachments,
+  disabled,
+  isGenerating,
+  isModelReady = true,
+  selectedModel,
+  settings,
+  onUpdateSettings,
+}: WelcomeScreenProps) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-2xl flex flex-col items-start gap-6">
@@ -25,11 +42,16 @@ export function WelcomeScreen({ onSend, onAddFile, onRemoveFile, attachments, se
         <div className="w-full">
           <PromptComposer
             onSend={onSend}
+            onStop={onStop}
             onAddFile={onAddFile}
             onRemoveFile={onRemoveFile}
             attachments={attachments}
+            disabled={disabled}
+            isGenerating={isGenerating}
+            isModelReady={isModelReady}
             selectedModel={selectedModel}
-            onModelChange={onModelChange}
+            settings={settings}
+            onUpdateSettings={onUpdateSettings}
           />
         </div>
       </div>

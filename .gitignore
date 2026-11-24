@@ -25,3 +25,6 @@ automation/recordings/
 # python
 __pycache__/
 *.pyc
+*.db
+models/
+bin/
