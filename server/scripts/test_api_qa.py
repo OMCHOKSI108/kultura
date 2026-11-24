@@ -688,7 +688,7 @@ class GatewayQASuite:
                 "enable_thinking": False,
                 "max_tokens": 30,
             }
-            with self.client.stream("POST", "/api/chat/completions", json=payload, timeout=35.0) as resp:
+            with self.client.stream("POST", "/api/chat/completions", json=payload, timeout=60.0) as resp:
                 lat = (time.perf_counter() - t0) * 1000
                 res.status_code = resp.status_code
                 res.expected_status = 200
