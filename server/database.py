@@ -32,9 +32,13 @@ async def init_db() -> None:
     """
     Initialize database tables with strict PostgreSQL requirement.
     Fails immediately if PostgreSQL database cannot be reached.
+    Automatically seeds or syncs the .env-configured Admin account.
     """
     try:
-        from sqlalchemy import text
+        import uuid
+        from sqlalchemy import text, select
+        from services.auth import hash_password, verify_password
+
         async with primary_engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
             # Safe schema upgrades for existing databases
@@ -42,6 +46,49 @@ async def init_db() -> None:
             await conn.execute(text("ALTER TABLE messages ADD COLUMN IF NOT EXISTS model VARCHAR(128);"))
             await conn.execute(text("ALTER TABLE messages ADD COLUMN IF NOT EXISTS sources_json TEXT;"))
             await conn.execute(text("ALTER TABLE messages ADD COLUMN IF NOT EXISTS reasoning TEXT;"))
+            await conn.execute(text("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS user_id VARCHAR(36) REFERENCES users(id) ON DELETE CASCADE;"))
+
+        # Seed or sync .env-configured Admin account
+        async with async_session_factory() as session:
+            from models import UserModel, SessionModel
+
+            admin_email = settings.ADMIN_ID.strip().lower()
+            admin_username = admin_email.split("@")[0] if "@" in admin_email else admin_email
+
+            stmt = select(UserModel).where((UserModel.email == admin_email) | (UserModel.username == admin_username))
+            res = await session.execute(stmt)
+            admin = res.scalar_one_or_none()
+
+            if not admin:
+                logger.info(f"Seeding initial Admin account from .env: {admin_email}")
+                admin = UserModel(
+                    id=str(uuid.uuid4()),
+                    username=admin_username,
+                    email=admin_email,
+                    hashed_password=hash_password(settings.ADMIN_PASS),
+                    role="admin",
+                    is_active=True,
+                )
+                session.add(admin)
+                await session.commit()
+            else:
+                # Keep admin password in sync with .env if updated
+                updated = False
+                if admin.role != "admin":
+                    admin.role = "admin"
+                    updated = True
+                if not verify_password(settings.ADMIN_PASS, admin.hashed_password):
+                    logger.info("Syncing Admin password with .env ADMIN_PASS")
+                    admin.hashed_password = hash_password(settings.ADMIN_PASS)
+                    updated = True
+                if updated:
+                    await session.commit()
+
+            # Assign any legacy unassigned sessions to the Admin account
+            legacy_stmt = text("UPDATE sessions SET user_id = :admin_id WHERE user_id IS NULL;")
+            await session.execute(legacy_stmt, {"admin_id": admin.id})
+            await session.commit()
+
         logger.info(
             f"Strict PostgreSQL connected successfully: {primary_engine.url.render_as_string(hide_password=True)}"
         )

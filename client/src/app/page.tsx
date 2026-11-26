@@ -8,16 +8,20 @@ import { MessageList } from "@/components/message-list";
 import { PromptComposer } from "@/components/prompt-composer";
 import { ProviderModelSelector } from "@/components/provider-model-selector";
 import { ModelHubView } from "@/components/model-hub-view";
+import { UsersManagementView } from "@/components/users-management-view";
+import { AuthModal } from "@/components/auth-modal";
+import { AuthProvider, useAuth } from "@/context/auth-context";
 import { fetchSessions, fetchSessionMessages, deleteSessionApi, subscribeToDownloadsStream } from "@/lib/api";
 import type { ChatSession, Message } from "@/types/chat";
 
-export default function Home() {
+function HomeContent() {
+  const { user } = useAuth();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [selectedProvider, setSelectedProvider] = useState("ollama");
   const [selectedModel, setSelectedModel] = useState("qwen3.5:4b");
   const [isModelReady, setIsModelReady] = useState(false);
-  const [activeView, setActiveView] = useState<"chat" | "hub">("chat");
+  const [activeView, setActiveView] = useState<"chat" | "hub" | "users">("chat");
   const [hubPreselectedProvider, setHubPreselectedProvider] = useState("ollama");
   const [activeDownloadsCount, setActiveDownloadsCount] = useState(0);
   const [modelRefreshKey, setModelRefreshKey] = useState(0);
@@ -67,10 +71,12 @@ export default function Home() {
 
   const loadRemoteSessions = useCallback(async () => {
     const list = await fetchSessions();
-    if (list.length > 0) {
-      setSessions(list);
-    }
+    setSessions(list);
   }, []);
+
+  useEffect(() => {
+    loadRemoteSessions();
+  }, [user, loadRemoteSessions]);
 
   useEffect(() => {
     async function init() {
@@ -173,8 +179,10 @@ export default function Home() {
           refreshKey={modelRefreshKey}
         />
 
-        {/* View Switcher: Model Hub vs Chat Message Feed / Welcome Screen */}
-        {activeView === "hub" ? (
+        {/* View Switcher: Users Management vs Model Hub vs Chat Message Feed / Welcome Screen */}
+        {activeView === "users" ? (
+          <UsersManagementView onClose={() => setActiveView("chat")} />
+        ) : activeView === "hub" ? (
           <ModelHubView
             initialProvider={hubPreselectedProvider || selectedProvider}
             onModelDownloaded={handleModelDownloaded}
@@ -216,5 +224,14 @@ export default function Home() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <AuthProvider>
+      <HomeContent />
+      <AuthModal />
+    </AuthProvider>
   );
 }

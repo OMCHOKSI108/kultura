@@ -8,8 +8,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db, async_session_factory
-from models import SessionModel, MessageModel, MessageMetricsModel
+from models import SessionModel, MessageModel, MessageMetricsModel, UserModel
 from schemas.chat_schemas import ChatCompletionRequest
+from services.auth import get_optional_current_user
 from services.orchestrator import orchestrator
 from services.providers import get_provider
 from services.stream_normalizer import StreamNormalizer, build_provider_payload
@@ -21,7 +22,11 @@ router = APIRouter(tags=["chat"])
 
 @router.post("/api/chat/completions")
 @router.post("/v1/chat/completions")
-async def chat_completions(request: ChatCompletionRequest, db: AsyncSession = Depends(get_db)):
+async def chat_completions(
+    request: ChatCompletionRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: Optional[UserModel] = Depends(get_optional_current_user),
+):
     """
     Unified Streaming, Cross-Model Context Handoff & Live Web Search Grounding:
     - Automatically loads full chronological message history from PostgreSQL
@@ -42,6 +47,7 @@ async def chat_completions(request: ChatCompletionRequest, db: AsyncSession = De
     session_id = request.session_id or request.conversation_id
     if not session_id:
         new_session = SessionModel(
+            user_id=current_user.id if current_user else None,
             title=request.messages[-1].content[:40] if request.messages else "New Chat",
             provider=request.provider,
             model=request.model,
@@ -56,6 +62,7 @@ async def chat_completions(request: ChatCompletionRequest, db: AsyncSession = De
         if not sess:
             new_session = SessionModel(
                 id=session_id,
+                user_id=current_user.id if current_user else None,
                 title=request.messages[-1].content[:40] if request.messages else "New Chat",
                 provider=request.provider,
                 model=request.model,
@@ -63,6 +70,10 @@ async def chat_completions(request: ChatCompletionRequest, db: AsyncSession = De
             db.add(new_session)
             await db.commit()
         else:
+            if current_user and sess.user_id and sess.user_id != current_user.id and current_user.role != "admin":
+                raise HTTPException(status_code=403, detail="Access denied to this session")
+            if current_user and not sess.user_id:
+                sess.user_id = current_user.id
             # Update session's last used provider and model
             sess.provider = request.provider
             sess.model = request.model

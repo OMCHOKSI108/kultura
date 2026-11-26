@@ -6,7 +6,14 @@ import uvicorn
 
 from config import settings
 from database import init_db
-from routers import providers_router, sessions_router, chat_router, system_router, hub_router
+from routers import (
+    providers_router,
+    sessions_router,
+    chat_router,
+    system_router,
+    hub_router,
+    auth_router,
+)
 from services.orchestrator import orchestrator
 
 logging.basicConfig(
@@ -45,11 +52,13 @@ app.add_middleware(
 )
 
 # Attach Routers
+app.include_router(auth_router)
 app.include_router(system_router)
 app.include_router(providers_router)
 app.include_router(sessions_router)
 app.include_router(chat_router)
 app.include_router(hub_router)
+
 
 
 @app.get("/")

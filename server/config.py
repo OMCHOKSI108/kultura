@@ -59,6 +59,13 @@ class Settings(BaseSettings):
     TAVILY_API_KEY: str | None = os.getenv("TAVILY_API_KEY", None)
     BRAVE_API_KEY: str | None = os.getenv("BRAVE_API_KEY", None)
 
+    # Admin & Authentication Credentials
+    ADMIN_ID: str = os.getenv("ADMIN_ID", "omchoksi99@gmail.com")
+    ADMIN_PASS: str = os.getenv("ADMIN_PASS", "ucantrustme")
+    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "kultura-super-secure-jwt-secret-key-32chars-min-change-in-prod")
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+
     # CORS
     CORS_ORIGINS: list[str] = ["*"]
 

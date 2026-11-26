@@ -14,6 +14,13 @@ from schemas.provider_schemas import (
     LoadModelRequest,
     VramStatus,
 )
+from schemas.auth_schemas import (
+    LoginRequest,
+    CreateUserRequest,
+    UpdatePasswordRequest,
+    UserResponse,
+    LoginResponse,
+)
 
 __all__ = [
     "AttachmentInput",
@@ -28,4 +35,10 @@ __all__ = [
     "ProviderStatus",
     "LoadModelRequest",
     "VramStatus",
+    "LoginRequest",
+    "CreateUserRequest",
+    "UpdatePasswordRequest",
+    "UserResponse",
+    "LoginResponse",
 ]
+

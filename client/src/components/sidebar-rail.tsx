@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Boxes } from "lucide-react";
+import { Boxes, Users, User as UserIcon } from "lucide-react";
 import { PixelMLogoBox } from "./brand-logo";
 import type { ChatSession } from "@/types/chat";
+import { useAuth } from "@/context/auth-context";
 
 function IcoPlus() {
   return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>;
@@ -70,8 +71,8 @@ interface SidebarRailProps {
   onNewChat: () => void;
   onOpenSession: (session: ChatSession) => void;
   onDeleteSession: (id: string) => void;
-  activeView?: "chat" | "hub";
-  onSelectView?: (view: "chat" | "hub") => void;
+  activeView?: "chat" | "hub" | "users";
+  onSelectView?: (view: "chat" | "hub" | "users") => void;
   activeDownloadsCount?: number;
 }
 
@@ -85,6 +86,7 @@ export function SidebarRail({
   onSelectView,
   activeDownloadsCount = 0,
 }: SidebarRailProps) {
+  const { user, openAuthModal } = useAuth();
   const [historyOpen, setHistoryOpen] = useState(false);
   const [panelWidth, setPanelWidth] = useState(PANEL_DEFAULT);
   const dragging = useRef(false);
@@ -142,7 +144,39 @@ export function SidebarRail({
         >
           <Boxes className="w-4 h-4" />
         </RailBtn>
+
+        <RailBtn
+          label="Users & Access"
+          active={activeView === "users"}
+          onClick={() => {
+            onSelectView?.(activeView === "users" ? "chat" : "users");
+            setHistoryOpen(false);
+          }}
+        >
+          <Users className="w-4 h-4" />
+        </RailBtn>
+
         <div className="flex-1" />
+
+        {/* User Account / Profile Pill */}
+        <div className="relative mb-1">
+          <button
+            onClick={openAuthModal}
+            title={user ? `${user.username} (${user.role}) - Click for Account` : "Sign In / Switch User"}
+            className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all hover:scale-105 border shadow-md"
+            style={{
+              background: user
+                ? user.role === "admin"
+                  ? "linear-gradient(135deg, #FF2D7A, #7928CA)"
+                  : "#2C2C2F"
+                : "#1E1E22",
+              borderColor: user ? (user.role === "admin" ? "#FF2D7A66" : "#3E3E42") : "#2C2C2F",
+              color: user ? "#FFF" : "#777",
+            }}
+          >
+            {user ? user.username.slice(0, 2).toUpperCase() : <UserIcon className="w-4 h-4" />}
+          </button>
+        </div>
       </aside>
 
       {historyOpen && (

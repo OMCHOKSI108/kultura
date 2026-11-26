@@ -4,7 +4,7 @@
     "passed": 29,
     "failed": 0,
     "pass_rate_pct": 100.0,
-    "timestamp": "2026-11-24T19:06:27Z"
+    "timestamp": "2026-11-26T11:47:42Z"
   },
   "results": [
     {
@@ -14,7 +14,7 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 140.45,
+      "latency_ms": 584.64,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -37,16 +37,16 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 35.24,
+      "latency_ms": 112.27,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
       "error_message": null,
       "details": {
         "total_mb": 4096.0,
-        "used_mb": 2939.0,
-        "free_mb": 1157.0,
-        "utilization_pct": 71.8
+        "used_mb": 0.0,
+        "free_mb": 4096.0,
+        "utilization_pct": 0.0
       }
     },
     {
@@ -56,14 +56,14 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 166.71,
+      "latency_ms": 509.47,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
       "error_message": null,
       "details": {
         "status": "healthy",
-        "online": 2
+        "online": 1
       }
     },
     {
@@ -73,7 +73,7 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 16.45,
+      "latency_ms": 58.46,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -95,7 +95,7 @@
       "passed": true,
       "status_code": 404,
       "expected_status": 404,
-      "latency_ms": 1.16,
+      "latency_ms": 3.26,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -111,7 +111,7 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 1213.51,
+      "latency_ms": 488.99,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -127,7 +127,7 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 1573.87,
+      "latency_ms": 538.93,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -145,7 +145,7 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 334.19,
+      "latency_ms": 445.64,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -158,7 +158,7 @@
           "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF",
           "huihui-ai/Huihui-Qwen3.8-27B-abliterated-GGUF",
           "huihui-ai/Huihui-Qwen3.6-35B-A3B-abliterated-MTP-GGUF",
-          "SC117/Qwen3.8-Flash-Next-GSQ-RCO-abliterated-GGUF"
+          "unsloth/Qwen3.8-Flash-Next-GGUF"
         ]
       }
     },
@@ -169,7 +169,7 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 707.64,
+      "latency_ms": 448.88,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -201,13 +201,13 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 6.92,
+      "latency_ms": 25.57,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
       "error_message": null,
       "details": {
-        "session_id": "73c77ee4-38e0-486f-ae22-cb4bfb02b653",
+        "session_id": "7ab42ce3-1ff4-4354-9295-add98ab7bdda",
         "title": "Automated QA Session"
       }
     },
@@ -218,13 +218,13 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 8.94,
+      "latency_ms": 18.39,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
       "error_message": null,
       "details": {
-        "total_sessions": 28,
+        "total_sessions": 30,
         "created_session_found": true
       }
     },
@@ -235,13 +235,13 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 6.36,
+      "latency_ms": 16.55,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
       "error_message": null,
       "details": {
-        "id": "73c77ee4-38e0-486f-ae22-cb4bfb02b653",
+        "id": "7ab42ce3-1ff4-4354-9295-add98ab7bdda",
         "title": "Automated QA Session",
         "model": "qwen3.5:4b"
       }
@@ -253,7 +253,7 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 7.53,
+      "latency_ms": 19.9,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -270,7 +270,7 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 6.05,
+      "latency_ms": 17.69,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -286,7 +286,7 @@
       "passed": true,
       "status_code": 404,
       "expected_status": 404,
-      "latency_ms": 2.5,
+      "latency_ms": 12.07,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -302,7 +302,7 @@
       "passed": true,
       "status_code": 404,
       "expected_status": 404,
-      "latency_ms": 3.44,
+      "latency_ms": 15.92,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -318,17 +318,17 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 8.59,
+      "latency_ms": 44.8,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
       "error_message": null,
       "details": {
         "event_types": [
-          "content",
+          "done",
           "status",
-          "metrics",
-          "done"
+          "content",
+          "metrics"
         ],
         "content": "Paris",
         "metrics": {
@@ -338,14 +338,14 @@
           "thinking_tokens": 0,
           "completion_tokens": 2,
           "total_tokens": 27,
-          "tokens_per_sec": 40.0,
-          "ttft_ms": 430.51,
-          "total_duration_ms": 474.0,
+          "tokens_per_sec": 19.4,
+          "ttft_ms": 14454.83,
+          "total_duration_ms": 14557.8,
           "thinking_duration_ms": 0
         },
         "done": {
-          "message_id": "f2e518ef-0e6a-4bcf-92e7-fbef660e4979",
-          "session_id": "73c77ee4-38e0-486f-ae22-cb4bfb02b653"
+          "message_id": "d41ffb9c-4ebd-4b5c-b915-5dc2ee2cba3d",
+          "session_id": "7ab42ce3-1ff4-4354-9295-add98ab7bdda"
         }
       }
     },
@@ -356,25 +356,25 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 8.57,
+      "latency_ms": 57.02,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
       "error_message": null,
       "details": {
         "has_thinking_events": true,
-        "thinking_length": 3985,
+        "thinking_length": 1280,
         "metrics": {
           "provider": "ollama",
           "model": "qwen3.5:4b",
           "prompt_tokens": 249,
-          "thinking_tokens": 1103,
-          "completion_tokens": 1072,
-          "total_tokens": 2424,
-          "tokens_per_sec": 36.8,
-          "ttft_ms": 10689.9,
-          "total_duration_ms": 69738.5,
-          "thinking_duration_ms": 58640
+          "thinking_tokens": 367,
+          "completion_tokens": 394,
+          "total_tokens": 1010,
+          "tokens_per_sec": 14.7,
+          "ttft_ms": 25850.69,
+          "total_duration_ms": 77795.1,
+          "thinking_duration_ms": 51017
         }
       }
     },
@@ -385,7 +385,7 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 628.27,
+      "latency_ms": 1544.69,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -395,10 +395,10 @@
         "sources_count": 5,
         "first_source": {
           "index": 1,
-          "title": "hotstar - Official Site",
-          "url": "http://www.hotstar.com/",
-          "domain": "hotstar.com",
-          "snippet": "Hotstar - Watch free online streaming of your favourite TV serials & movies - Hindi, Tamil, Bengali & more with Live cricket streaming \u2026Read more"
+          "title": "Explorateur de fichiers dans Windows | Microsoft Support",
+          "url": "https://support.microsoft.com/fr-fr/windows/experience/fileexplorer/file-explorer-in-windows",
+          "domain": "support.microsoft.com",
+          "snippet": "Recherchez et ouvrez l\u2019Explorateur de fichiers dans Windows, puis personnalisez Acc\u00e8s rapide en \u00e9pinglant et en supprimant des \u2026"
         }
       }
     },
@@ -409,7 +409,7 @@
       "passed": true,
       "status_code": 422,
       "expected_status": 422,
-      "latency_ms": 5.01,
+      "latency_ms": 35.62,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -423,7 +423,7 @@
       "passed": true,
       "status_code": 400,
       "expected_status": 400,
-      "latency_ms": 2.3,
+      "latency_ms": 28.32,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -439,7 +439,7 @@
       "passed": true,
       "status_code": 422,
       "expected_status": 422,
-      "latency_ms": 2.35,
+      "latency_ms": 12.18,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -455,7 +455,7 @@
       "passed": true,
       "status_code": 422,
       "expected_status": 422,
-      "latency_ms": 1.47,
+      "latency_ms": 6.14,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -471,7 +471,7 @@
       "passed": true,
       "status_code": 422,
       "expected_status": 422,
-      "latency_ms": 2.65,
+      "latency_ms": 14.15,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -483,21 +483,21 @@
     {
       "category": "Database",
       "test_id": "DB_SESSION_RECORD",
-      "description": "Verify session 73c77ee4-38e0-486f-ae22-cb4bfb02b653 in PostgreSQL",
+      "description": "Verify session 7ab42ce3-1ff4-4354-9295-add98ab7bdda in PostgreSQL",
       "passed": true,
       "status_code": 200,
       "expected_status": null,
-      "latency_ms": 5.45,
+      "latency_ms": 14.19,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
       "error_message": null,
       "details": {
-        "id": "73c77ee4-38e0-486f-ae22-cb4bfb02b653",
+        "id": "7ab42ce3-1ff4-4354-9295-add98ab7bdda",
         "title": "Updated QA Title",
         "provider": "ollama",
         "model": "qwen3.5:4b",
-        "created_at": "2026-11-24 19:05:04.622418"
+        "created_at": "2026-11-26 11:45:45.437119"
       }
     },
     {
@@ -507,7 +507,7 @@
       "passed": true,
       "status_code": 200,
       "expected_status": null,
-      "latency_ms": 2.35,
+      "latency_ms": 5.55,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -526,7 +526,7 @@
       "passed": true,
       "status_code": 200,
       "expected_status": null,
-      "latency_ms": 2.67,
+      "latency_ms": 7.48,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -534,8 +534,8 @@
       "details": {
         "metrics_entries": 3,
         "sample": {
-          "tokens_per_sec": 40.0,
-          "ttft_ms": 430.51,
+          "tokens_per_sec": 19.4,
+          "ttft_ms": 14454.83,
           "prompt_tokens": 25,
           "completion_tokens": 2
         }
@@ -548,7 +548,7 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 13.22,
+      "latency_ms": 82.59,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,
@@ -567,7 +567,7 @@
       "passed": true,
       "status_code": 200,
       "expected_status": 200,
-      "latency_ms": 23.77,
+      "latency_ms": 89.89,
       "schema_valid": true,
       "schema_error": null,
       "issue_type": null,

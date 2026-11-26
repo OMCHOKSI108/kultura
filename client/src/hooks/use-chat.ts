@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { Message, FileAttachment, ChatInferenceSettings } from "@/types/chat";
-import { deleteMessageApi } from "@/lib/api";
+import { deleteMessageApi, getAuthHeaders } from "@/lib/api";
 
 const API_BASE = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:8000";
 
@@ -193,7 +193,7 @@ export function useChat({
 
         const res = await fetch(`${API_BASE}/api/chat/completions`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify(payload),
           signal: abortControllerRef.current.signal,
         });
