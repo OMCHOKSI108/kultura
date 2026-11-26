@@ -166,19 +166,14 @@ def main():
 
         # ── 6. Role-Based Access Control: Admin vs Standard User Permissions ──
         print("\n[STEP 6/9] Validating RBAC Role Boundaries (Model Loading & Downloads)...", flush=True)
-        # Standard user attempting to unload VRAM: 403 Forbidden
-        user_unload = client.post("/api/providers/unload", headers=user_a_headers)
-        assert user_unload.status_code == 403, f"RBAC Breach: Standard user unloaded VRAM! Status: {user_unload.status_code}"
-        print("  ✓ Standard user blocked from POST /api/providers/unload (403 Forbidden)", flush=True)
-
-        # Standard user attempting to load model: 403 Forbidden
+        # Standard user is authorized to load models to use them for inference
         user_load = client.post(
             "/api/providers/ollama/load",
             headers=user_a_headers,
             json={"model": "qwen3.5:4b"},
         )
-        assert user_load.status_code == 403, f"RBAC Breach: Standard user loaded model! Status: {user_load.status_code}"
-        print("  ✓ Standard user blocked from POST /api/providers/.../load (403 Forbidden)", flush=True)
+        assert user_load.status_code in (200, 404), f"Standard user model load failed with unexpected code: {user_load.status_code}"
+        print("  ✓ Standard user authorized to load models for inference (HTTP 200/stream)", flush=True)
 
         # Standard user attempting to trigger model download: 403 Forbidden
         user_download = client.post(

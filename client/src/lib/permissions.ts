@@ -34,6 +34,7 @@ export const ROLE_PERMISSIONS: Record<string, AppPermission[]> = {
     "chat:create",
     "sessions:manage",
     "models:select",
+    "models:load",
     "api_keys:manage",
     "profile:edit",
   ],

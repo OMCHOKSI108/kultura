@@ -66,9 +66,9 @@ async def list_provider_models(
 
 
 @router.post("/unload")
-async def unload_all_models(admin: UserModel = Depends(require_admin)):
+async def unload_all_models(current_user: UserModel = Depends(get_current_user)):
     """
-    Eject / Unload VRAM: Admin only.
+    Eject / Unload VRAM:
     Unloads all active models across all engines and stops GPU containers.
     """
     await orchestrator.unload_all()
@@ -76,8 +76,8 @@ async def unload_all_models(admin: UserModel = Depends(require_admin)):
 
 
 @router.post("/{provider_name}/unload")
-async def unload_provider(provider_name: str, admin: UserModel = Depends(require_admin)):
-    """Unload a specific provider or model: Admin only."""
+async def unload_provider(provider_name: str, current_user: UserModel = Depends(get_current_user)):
+    """Unload a specific provider or model."""
     try:
         p = get_provider(provider_name)
         await p.unload()
@@ -93,10 +93,10 @@ async def unload_provider(provider_name: str, admin: UserModel = Depends(require
 async def load_model(
     provider_name: str,
     request: LoadModelRequest,
-    admin: UserModel = Depends(require_admin),
+    current_user: UserModel = Depends(get_current_user),
 ):
     """
-    Model Load & Engine Switcher: Admin only.
+    Model Load & Engine Switcher:
     Streams real-time lifecycle progress events (stopping_previous -> starting_container -> loading_weights_to_vram -> ready) via SSE.
     """
     try:
