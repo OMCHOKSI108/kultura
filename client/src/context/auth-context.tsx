@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import type { User } from "@/types/auth";
-import { fetchMeApi, loginApi, logoutApi, getAuthToken } from "@/lib/api";
+import { fetchMeApi, loginApi, logoutApi, setOnUnauthorized } from "@/lib/api";
 
 interface AuthContextType {
   user: User | null;
@@ -36,6 +36,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    setOnUnauthorized(() => {
+      setUser(null);
+      setIsAuthModalOpen(true);
+    });
     refreshUser();
   }, [refreshUser]);
 

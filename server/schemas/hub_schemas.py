@@ -40,6 +40,10 @@ class HubModelDetails(BaseModel):
     architecture: Optional[str] = None
     context_length: Optional[int] = None
     total_params_formatted: Optional[str] = None
+    capacity_formatted: Optional[str] = None
+    license: Optional[str] = None
+    pipeline_tag: Optional[str] = None
+    weights_format: Optional[str] = "GGUF"
     description: Optional[str] = None
     files: List[HubModelFile] = Field(default_factory=list)
 

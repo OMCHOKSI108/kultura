@@ -9,19 +9,24 @@ import { PromptComposer } from "@/components/prompt-composer";
 import { ProviderModelSelector } from "@/components/provider-model-selector";
 import { ModelHubView } from "@/components/model-hub-view";
 import { UsersManagementView } from "@/components/users-management-view";
+import { ObservabilityView } from "@/components/observability-view";
+import { UserSettingsView } from "@/components/user-settings-view";
 import { AuthModal } from "@/components/auth-modal";
 import { AuthProvider, useAuth } from "@/context/auth-context";
+import { AuthorizationProvider, useAuthorization } from "@/context/authorization-context";
+import { PermissionGate, AccessDeniedView } from "@/components/permission-gate";
 import { fetchSessions, fetchSessionMessages, deleteSessionApi, subscribeToDownloadsStream } from "@/lib/api";
 import type { ChatSession, Message } from "@/types/chat";
 
 function HomeContent() {
-  const { user } = useAuth();
+  const { user, loading, refreshUser } = useAuth();
+  const { can } = useAuthorization();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [selectedProvider, setSelectedProvider] = useState("ollama");
   const [selectedModel, setSelectedModel] = useState("qwen3.5:4b");
   const [isModelReady, setIsModelReady] = useState(false);
-  const [activeView, setActiveView] = useState<"chat" | "hub" | "users">("chat");
+  const [activeView, setActiveView] = useState<"chat" | "hub" | "users" | "observability" | "settings">("chat");
   const [hubPreselectedProvider, setHubPreselectedProvider] = useState("ollama");
   const [activeDownloadsCount, setActiveDownloadsCount] = useState(0);
   const [modelRefreshKey, setModelRefreshKey] = useState(0);
@@ -70,16 +75,22 @@ function HomeContent() {
   });
 
   const loadRemoteSessions = useCallback(async () => {
+    if (!user) return;
     const list = await fetchSessions();
     setSessions(list);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
-    loadRemoteSessions();
+    if (user) {
+      loadRemoteSessions();
+    } else {
+      setSessions([]);
+    }
   }, [user, loadRemoteSessions]);
 
   useEffect(() => {
     async function init() {
+      if (!user) return;
       const list = await fetchSessions();
       setSessions(list);
 
@@ -103,7 +114,7 @@ function HomeContent() {
       resetChat();
     }
     init();
-  }, [loadMessages, resetChat]);
+  }, [user, loadMessages, resetChat]);
 
   useEffect(() => {
     const unsub = subscribeToDownloadsStream((items) => {
@@ -151,6 +162,30 @@ function HomeContent() {
     if (activeSessionId === id) handleNewChat();
   }
 
+  // Strict Private Application Mode: loading spinner
+  if (loading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#171719] text-gray-400">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-pink-500 border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs font-mono tracking-wider text-gray-400 uppercase">Authenticating Kultura...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Strict Private Application Mode: Unauthenticated visitor screen (AuthModal mandatory)
+  if (!user) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#171719] p-4 text-center">
+        <div className="max-w-md">
+          <h2 className="text-xl font-semibold text-white mb-2">Private Inference Platform</h2>
+          <p className="text-sm text-gray-400">Please sign in to access Chat, Model Hub, and local inference engines.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen w-screen overflow-hidden" style={{ background: "#171719" }}>
       {/* Resizable Sidebar Rail */}
@@ -179,9 +214,37 @@ function HomeContent() {
           refreshKey={modelRefreshKey}
         />
 
-        {/* View Switcher: Users Management vs Model Hub vs Chat Message Feed / Welcome Screen */}
-        {activeView === "users" ? (
-          <UsersManagementView onClose={() => setActiveView("chat")} />
+        {/* View Switcher: Observability vs Settings vs Users vs Hub vs Chat Feed */}
+        {activeView === "observability" ? (
+          <PermissionGate
+            permission="observability:view"
+            fallback={
+              <AccessDeniedView
+                title="Observability Access Restricted"
+                message="Viewing telemetry, p95 latency, and token consumption logs requires administrator privileges."
+              />
+            }
+          >
+            <ObservabilityView onBackToChat={() => setActiveView("chat")} />
+          </PermissionGate>
+        ) : activeView === "settings" ? (
+          <UserSettingsView
+            currentUser={user}
+            onUserUpdated={refreshUser}
+            onBackToChat={() => setActiveView("chat")}
+          />
+        ) : activeView === "users" ? (
+          <PermissionGate
+            permission="users:manage"
+            fallback={
+              <AccessDeniedView
+                title="User Management Restricted"
+                message="Creating, updating, and revoking user accounts requires administrator privileges."
+              />
+            }
+          >
+            <UsersManagementView onClose={() => setActiveView("chat")} />
+          </PermissionGate>
         ) : activeView === "hub" ? (
           <ModelHubView
             initialProvider={hubPreselectedProvider || selectedProvider}
@@ -230,8 +293,10 @@ function HomeContent() {
 export default function Home() {
   return (
     <AuthProvider>
-      <HomeContent />
-      <AuthModal />
+      <AuthorizationProvider>
+        <HomeContent />
+        <AuthModal isMandatory={true} />
+      </AuthorizationProvider>
     </AuthProvider>
   );
 }

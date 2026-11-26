@@ -194,6 +194,7 @@ export function useChat({
         const res = await fetch(`${API_BASE}/api/chat/completions`, {
           method: "POST",
           headers: getAuthHeaders({ "Content-Type": "application/json" }),
+          credentials: "include",
           body: JSON.stringify(payload),
           signal: abortControllerRef.current.signal,
         });

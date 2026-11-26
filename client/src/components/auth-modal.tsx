@@ -4,7 +4,11 @@ import React, { useState } from "react";
 import { useAuth } from "@/context/auth-context";
 import { User, Lock, Mail, LogOut, CheckCircle2, AlertCircle, X, Shield, ArrowRight } from "lucide-react";
 
-export function AuthModal() {
+interface AuthModalProps {
+  isMandatory?: boolean;
+}
+
+export function AuthModal({ isMandatory = false }: AuthModalProps) {
   const { user, isAuthenticated, login, logout, isAuthModalOpen, closeAuthModal } = useAuth();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -12,7 +16,8 @@ export function AuthModal() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  if (!isAuthModalOpen) return null;
+  // If mandatory and user is unauthenticated, always show modal
+  if (!isAuthModalOpen && (!isMandatory || isAuthenticated)) return null;
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -31,8 +36,9 @@ export function AuthModal() {
       setTimeout(() => {
         closeAuthModal();
       }, 600);
-    } catch (err: any) {
-      setError(err?.message || "Failed to sign in. Please verify your credentials.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to sign in. Please verify your credentials.";
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -48,13 +54,16 @@ export function AuthModal() {
           boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.7)",
         }}
       >
-        {/* Close Button */}
-        <button
-          onClick={closeAuthModal}
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#27272A] transition"
-        >
-          <X className="w-4 h-4" />
-        </button>
+        {/* Close Button - hidden in mandatory private mode when unauthenticated */}
+        {(!isMandatory || isAuthenticated) && (
+          <button
+            onClick={closeAuthModal}
+            className="absolute top-4 right-4 p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#27272A] transition"
+            aria-label="Close authentication modal"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
 
         {isAuthenticated && user ? (
           <div>

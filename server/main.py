@@ -13,6 +13,8 @@ from routers import (
     system_router,
     hub_router,
     auth_router,
+    observability_router,
+    api_keys_router,
 )
 from services.orchestrator import orchestrator
 
@@ -53,6 +55,8 @@ app.add_middleware(
 
 # Attach Routers
 app.include_router(auth_router)
+app.include_router(api_keys_router)
+app.include_router(observability_router)
 app.include_router(system_router)
 app.include_router(providers_router)
 app.include_router(sessions_router)

@@ -15,7 +15,7 @@ from schemas.chat_schemas import (
     MessageResponse,
     MessageMetricsSchema,
 )
-from services.auth import get_optional_current_user
+from services.auth import get_current_user
 
 logger = logging.getLogger("kultura.routers.sessions")
 router = APIRouter(prefix="/api", tags=["sessions"])
@@ -24,13 +24,15 @@ router = APIRouter(prefix="/api", tags=["sessions"])
 @router.get("/sessions", response_model=List[SessionResponse])
 async def list_sessions(
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[UserModel] = Depends(get_optional_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ):
     """List all chat sessions for the authenticated user with their latest message preview."""
-    stmt = select(SessionModel).options(selectinload(SessionModel.messages))
-    if current_user:
-        stmt = stmt.where(SessionModel.user_id == current_user.id)
-    stmt = stmt.order_by(desc(SessionModel.updated_at))
+    stmt = (
+        select(SessionModel)
+        .options(selectinload(SessionModel.messages))
+        .where(SessionModel.user_id == current_user.id)
+        .order_by(desc(SessionModel.updated_at))
+    )
 
     res = await db.execute(stmt)
     sessions = res.scalars().all()
@@ -62,11 +64,11 @@ async def list_sessions(
 async def create_session(
     data: SessionCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[UserModel] = Depends(get_optional_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ):
     """Create a new chat session tied strictly to the authenticated user."""
     new_session = SessionModel(
-        user_id=current_user.id if current_user else None,
+        user_id=current_user.id,
         title=data.title or "New Chat",
         provider=data.provider or "ollama",
         model=data.model or "qwen3.5:4b",
@@ -91,7 +93,7 @@ async def create_session(
 async def get_session(
     session_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[UserModel] = Depends(get_optional_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ):
     stmt = (
         select(SessionModel)
@@ -103,7 +105,7 @@ async def get_session(
     if not s:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    if current_user and s.user_id and s.user_id != current_user.id and current_user.role != "admin":
+    if s.user_id != current_user.id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Access denied to this session")
 
     preview = s.messages[0].content[:80] if s.messages else ""
@@ -124,13 +126,13 @@ async def update_session(
     session_id: str,
     data: SessionUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[UserModel] = Depends(get_optional_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ):
     s = await db.get(SessionModel, session_id)
     if not s:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    if current_user and s.user_id and s.user_id != current_user.id and current_user.role != "admin":
+    if s.user_id != current_user.id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Access denied to this session")
 
     if data.title is not None:
@@ -159,13 +161,13 @@ async def update_session(
 async def delete_session(
     session_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[UserModel] = Depends(get_optional_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ):
     s = await db.get(SessionModel, session_id)
     if not s:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    if current_user and s.user_id and s.user_id != current_user.id and current_user.role != "admin":
+    if s.user_id != current_user.id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Access denied to this session")
 
     await db.delete(s)
@@ -177,14 +179,14 @@ async def delete_session(
 async def list_session_messages(
     session_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[UserModel] = Depends(get_optional_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ):
     """Fetch all messages for a session with thinking traces and token metrics."""
     s = await db.get(SessionModel, session_id)
     if not s:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    if current_user and s.user_id and s.user_id != current_user.id and current_user.role != "admin":
+    if s.user_id != current_user.id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Access denied to this session")
 
     stmt = (
@@ -249,16 +251,15 @@ async def list_session_messages(
 async def delete_message(
     message_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[UserModel] = Depends(get_optional_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ):
     m = await db.get(MessageModel, message_id)
     if not m:
         raise HTTPException(status_code=404, detail="Message not found")
 
-    if current_user and current_user.role != "admin":
-        s = await db.get(SessionModel, m.session_id)
-        if s and s.user_id and s.user_id != current_user.id:
-            raise HTTPException(status_code=403, detail="Access denied")
+    s = await db.get(SessionModel, m.session_id)
+    if not s or (s.user_id != current_user.id and current_user.role != "admin"):
+        raise HTTPException(status_code=403, detail="Access denied to this message")
 
     await db.delete(m)
     await db.commit()

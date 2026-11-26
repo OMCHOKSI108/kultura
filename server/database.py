@@ -47,6 +47,9 @@ async def init_db() -> None:
             await conn.execute(text("ALTER TABLE messages ADD COLUMN IF NOT EXISTS sources_json TEXT;"))
             await conn.execute(text("ALTER TABLE messages ADD COLUMN IF NOT EXISTS reasoning TEXT;"))
             await conn.execute(text("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS user_id VARCHAR(36) REFERENCES users(id) ON DELETE CASCADE;"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(512);"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS designation VARCHAR(128);"))
 
         # Seed or sync .env-configured Admin account
         async with async_session_factory() as session:

@@ -7,10 +7,19 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from constants import (
+    COST_PER_1K_PROMPT_TOKENS_USD,
+    COST_PER_1K_COMPLETION_TOKENS_USD,
+    STATUS_OK,
+    STATUS_ERROR,
+    INTENT_CODE_AGENT,
+    INTENT_SEARCH_GROUNDED,
+    INTENT_CHAT,
+)
 from database import get_db, async_session_factory
-from models import SessionModel, MessageModel, MessageMetricsModel, UserModel
+from models import SessionModel, MessageModel, MessageMetricsModel, UserModel, RequestTraceModel
 from schemas.chat_schemas import ChatCompletionRequest
-from services.auth import get_optional_current_user
+from services.auth import get_current_user
 from services.orchestrator import orchestrator
 from services.providers import get_provider
 from services.stream_normalizer import StreamNormalizer, build_provider_payload
@@ -25,7 +34,7 @@ router = APIRouter(tags=["chat"])
 async def chat_completions(
     request: ChatCompletionRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[UserModel] = Depends(get_optional_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ):
     """
     Unified Streaming, Cross-Model Context Handoff & Live Web Search Grounding:
@@ -47,7 +56,7 @@ async def chat_completions(
     session_id = request.session_id or request.conversation_id
     if not session_id:
         new_session = SessionModel(
-            user_id=current_user.id if current_user else None,
+            user_id=current_user.id,
             title=request.messages[-1].content[:40] if request.messages else "New Chat",
             provider=request.provider,
             model=request.model,
@@ -62,7 +71,7 @@ async def chat_completions(
         if not sess:
             new_session = SessionModel(
                 id=session_id,
-                user_id=current_user.id if current_user else None,
+                user_id=current_user.id,
                 title=request.messages[-1].content[:40] if request.messages else "New Chat",
                 provider=request.provider,
                 model=request.model,
@@ -70,10 +79,8 @@ async def chat_completions(
             db.add(new_session)
             await db.commit()
         else:
-            if current_user and sess.user_id and sess.user_id != current_user.id and current_user.role != "admin":
+            if sess.user_id != current_user.id and current_user.role != "admin":
                 raise HTTPException(status_code=403, detail="Access denied to this session")
-            if current_user and not sess.user_id:
-                sess.user_id = current_user.id
             # Update session's last used provider and model
             sess.provider = request.provider
             sess.model = request.model
@@ -181,6 +188,7 @@ async def chat_completions(
 
     async def sse_event_stream() -> AsyncGenerator[str, None]:
         assistant_message_id = str(uuid.uuid4())
+        trace_error: Optional[str] = None
         try:
             # Emit searching status only if web search was actually triggered
             if search_triggered:
@@ -200,6 +208,7 @@ async def chat_completions(
                 yield f"event: {event_type}\ndata: {data_json}\n\n"
 
         except Exception as e:
+            trace_error = str(e)
             logger.error(f"Error in chat completion stream: {e}", exc_info=True)
             yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
 
@@ -209,12 +218,29 @@ async def chat_completions(
                 final_metrics = normalizer.get_metrics_snapshot()
                 yield f"event: metrics\ndata: {json.dumps(final_metrics)}\n\n"
 
-                # 6. Asynchronously persist assistant message, metadata, sources, and metrics to DB
+                # Persist request telemetry trace for Observability Dashboard
+                trace_id = f"tr_{uuid.uuid4().hex[:6]}"
+                p_toks = final_metrics["prompt_tokens"]
+                c_toks = final_metrics["completion_tokens"]
+                t_toks = final_metrics["thinking_tokens"]
+                tot_toks = p_toks + c_toks + t_toks
+                cost = (p_toks / 1000.0 * COST_PER_1K_PROMPT_TOKENS_USD) + (
+                    (c_toks + t_toks) / 1000.0 * COST_PER_1K_COMPLETION_TOKENS_USD
+                )
+
+                intent = (
+                    INTENT_SEARCH_GROUNDED
+                    if web_sources
+                    else (INTENT_CODE_AGENT if "coder" in request.model.lower() else INTENT_CHAT)
+                )
+                trace_status = STATUS_ERROR if trace_error else STATUS_OK
+
+                # 6. Asynchronously persist assistant message, metadata, sources, metrics and trace to DB
                 full_ans = "".join(normalizer.full_content)
                 full_think = "".join(normalizer.full_thinking) if normalizer.full_thinking else None
 
-                if full_ans or full_think:
-                    async with async_session_factory() as persist_db:
+                async with async_session_factory() as persist_db:
+                    if full_ans or full_think:
                         asst_msg = MessageModel(
                             id=assistant_message_id,
                             session_id=session_id,
@@ -233,17 +259,38 @@ async def chat_completions(
                             message_id=assistant_message_id,
                             provider=request.provider,
                             model=request.model,
-                            prompt_tokens=final_metrics["prompt_tokens"],
-                            thinking_tokens=final_metrics["thinking_tokens"],
-                            completion_tokens=final_metrics["completion_tokens"],
+                            prompt_tokens=p_toks,
+                            thinking_tokens=t_toks,
+                            completion_tokens=c_toks,
                             tokens_per_sec=final_metrics["tokens_per_sec"],
                             ttft_ms=final_metrics["ttft_ms"],
                             total_duration_ms=final_metrics["total_duration_ms"],
                         )
                         persist_db.add(metrics_entry)
-                        await persist_db.commit()
 
-                yield f"event: done\ndata: {json.dumps({'message_id': assistant_message_id, 'session_id': session_id})}\n\n"
+                    # Save trace record
+                    trace_record = RequestTraceModel(
+                        id=str(uuid.uuid4()),
+                        trace_id=trace_id,
+                        user_id=current_user.id,
+                        session_id=session_id,
+                        provider=request.provider,
+                        model=request.model,
+                        intent=intent,
+                        status=trace_status,
+                        error_message=trace_error,
+                        latency_ms=final_metrics["total_duration_ms"],
+                        ttft_ms=final_metrics["ttft_ms"],
+                        prompt_tokens=p_toks,
+                        completion_tokens=c_toks,
+                        thinking_tokens=t_toks,
+                        total_tokens=tot_toks,
+                        estimated_cost_usd=cost,
+                    )
+                    persist_db.add(trace_record)
+                    await persist_db.commit()
+
+                yield f"event: done\ndata: {json.dumps({'message_id': assistant_message_id, 'session_id': session_id, 'trace_id': trace_id})}\n\n"
             except Exception as fe:
                 logger.warning(f"Error in sse_event_stream finally block: {fe}")
                 yield f"event: done\ndata: {json.dumps({'message_id': assistant_message_id, 'session_id': session_id})}\n\n"

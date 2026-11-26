@@ -18,6 +18,8 @@ from schemas.auth_schemas import (
     LoginRequest,
     CreateUserRequest,
     UpdatePasswordRequest,
+    UpdateProfileRequest,
+    ToggleUserStatusRequest,
     UserResponse,
     LoginResponse,
 )
@@ -38,6 +40,8 @@ __all__ = [
     "LoginRequest",
     "CreateUserRequest",
     "UpdatePasswordRequest",
+    "UpdateProfileRequest",
+    "ToggleUserStatusRequest",
     "UserResponse",
     "LoginResponse",
 ]

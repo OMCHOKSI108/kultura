@@ -68,11 +68,12 @@ class HubService:
     async def search_hf_models(
         self,
         q: Optional[str] = None,
+        category: Optional[str] = None,
         sort: str = "downloads",
         limit: int = 20,
     ) -> List[HubModelSearchItem]:
-        """Proxy Hugging Face Hub API for GGUF models with in-memory caching."""
-        cache_key = f"{q or ''}:{sort}:{limit}"
+        """Proxy Hugging Face Hub API for GGUF models with in-memory caching and exact repo lookup."""
+        cache_key = f"{q or ''}:{category or ''}:{sort}:{limit}"
         now = time.time()
 
         if cache_key in self._search_cache:
@@ -96,7 +97,9 @@ class HubService:
             "voice-activity-detection",
         }
         AUDIO_KEYWORDS = {"audio", "speech", "asr", "tts", "whisper", "voice"}
-        is_audio_query = bool(q and any(k in q.lower() for k in AUDIO_KEYWORDS))
+        is_audio_query = bool(
+            (category == "audio") or (q and any(k in q.lower() for k in AUDIO_KEYWORDS))
+        )
 
         params = {
             "filter": "gguf",
@@ -105,20 +108,56 @@ class HubService:
             "direction": "-1",
             "limit": min(limit, 60),
         }
-        if q and q.strip():
-            params["search"] = q.strip()
+        clean_q = q.strip() if q else ""
+        if clean_q:
+            params["search"] = clean_q
 
         url = "https://huggingface.co/api/models"
         items: List[HubModelSearchItem] = []
 
         try:
             async with httpx.AsyncClient(timeout=10.0, headers=self._client_headers) as client:
+                # 0. Check direct exact repo search (e.g. "OMCHOKSI108/mycustomModel")
+                if "/" in clean_q:
+                    try:
+                        exact_resp = await client.get(f"https://huggingface.co/api/models/{clean_q}")
+                        if exact_resp.status_code == 200:
+                            em = exact_resp.json()
+                            em_id = em.get("id", clean_q)
+                            em_author = em.get("author") or em_id.split("/")[0]
+                            em_name = em_id.split("/")[-1]
+                            em_siblings = em.get("siblings") or []
+                            em_gguf = [
+                                f for f in em_siblings
+                                if isinstance(f, dict) and f.get("rfilename", "").lower().endswith(".gguf")
+                            ]
+                            items.append(
+                                HubModelSearchItem(
+                                    id=em_id,
+                                    author=em_author,
+                                    name=em_name,
+                                    downloads=em.get("downloads", 0),
+                                    likes=em.get("likes", 0),
+                                    tags=em.get("tags", [])[:12],
+                                    architecture=em.get("config", {}).get("architectures", [None])[0] if em.get("config") else None,
+                                    context_length=em.get("config", {}).get("max_position_embeddings") if em.get("config") else None,
+                                    total_params_formatted=None,
+                                    param_size_b=None,
+                                    gguf_count=len(em_gguf) or len(em_siblings),
+                                    last_modified=em.get("lastModified"),
+                                    pipeline_tag=em.get("pipeline_tag"),
+                                    description=f"Custom HuggingFace Repository ({em_id})",
+                                )
+                            )
+                    except Exception as ee:
+                        logger.debug(f"Direct repo lookup note: {ee}")
+
                 resp = await client.get(url, params=params)
                 if resp.status_code == 200:
                     raw_models = resp.json()
                     for m in raw_models:
                         m_id = m.get("id", "")
-                        if not m_id:
+                        if not m_id or any(item.id == m_id for item in items):
                             continue
 
                         author = m.get("author") or (m_id.split("/")[0] if "/" in m_id else "community")
@@ -126,12 +165,29 @@ class HubService:
                         tags = m.get("tags", [])
                         pipeline_tag = m.get("pipeline_tag")
 
+                        # Category Filtering
+                        if category == "code":
+                            if not any(k in name.lower() for k in ["code", "coder", "dev", "deepseek-coder"]) and not any("code" in t.lower() for t in tags):
+                                continue
+                        elif category == "image":
+                            if not any(k in (pipeline_tag or "").lower() for k in ["image", "vision"]) and not any(k in name.lower() for k in ["vision", "vl", "clip", "flux", "diffus"]) and not any("vision" in t.lower() for t in tags):
+                                continue
+                        elif category == "audio":
+                            if pipeline_tag not in NON_LLM_PIPELINES and not any(k in name.lower() for k in AUDIO_KEYWORDS):
+                                continue
+                        elif category == "video":
+                            if "video" not in (pipeline_tag or "") and not any("video" in t.lower() for t in tags):
+                                continue
+                        elif category == "text-generation":
+                            if pipeline_tag in NON_LLM_PIPELINES:
+                                continue
+
                         # 1. Filter out non-text/audio models unless explicitly searched
-                        if pipeline_tag in NON_LLM_PIPELINES and not is_audio_query:
+                        if pipeline_tag in NON_LLM_PIPELINES and not is_audio_query and category != "audio":
                             continue
 
                         lower_name = name.lower()
-                        if not is_audio_query and any(k in lower_name for k in ["-asr", "whisper", "parakeet", "audio.cpp", "piper", "bark"]):
+                        if not is_audio_query and category != "audio" and any(k in lower_name for k in ["-asr", "whisper", "parakeet", "audio.cpp", "piper", "bark"]):
                             continue
 
                         # 2. Inspect siblings and drop repos with 0 .gguf weights
@@ -288,10 +344,39 @@ class HubService:
         # Sort files by size ascending so user sees accessible models first
         files.sort(key=lambda x: x.size_bytes)
 
+        # Retrieve rich model card metadata
+        meta_info = {}
+        try:
+            async with httpx.AsyncClient(timeout=8.0, headers=self._client_headers) as client:
+                info_resp = await client.get(f"https://huggingface.co/api/models/{repo_id}")
+                if info_resp.status_code == 200:
+                    meta_info = info_resp.json()
+        except Exception:
+            pass
+
+        total_bytes = sum(f.size_bytes for f in files)
+        cfg = meta_info.get("config") or {}
+        card = meta_info.get("cardData") or {}
+
+        # Parse param string
+        param_match = PARAM_REGEX.search(name)
+        param_str = param_match.group(1).upper() if param_match else None
+
         return HubModelDetails(
             id=repo_id,
             author=author,
             name=name,
+            downloads=meta_info.get("downloads", 0),
+            likes=meta_info.get("likes", 0),
+            tags=meta_info.get("tags", [])[:15],
+            architecture=cfg.get("architectures", [None])[0] if cfg.get("architectures") else None,
+            context_length=cfg.get("max_position_embeddings"),
+            total_params_formatted=param_str,
+            capacity_formatted=format_bytes(total_bytes) if total_bytes > 0 else None,
+            license=card.get("license") or meta_info.get("license") or "open-weights",
+            pipeline_tag=meta_info.get("pipeline_tag") or "text-generation",
+            weights_format="GGUF",
+            description=meta_info.get("description"),
             files=files,
         )
 

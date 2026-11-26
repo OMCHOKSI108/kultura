@@ -3,7 +3,9 @@ import logging
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
+from models import UserModel
 from schemas.provider_schemas import ProviderStatus, ModelInfo, LoadModelRequest, VramStatus
+from services.auth import get_current_user, require_admin
 from services.orchestrator import orchestrator
 from services.providers import get_provider
 
@@ -12,19 +14,19 @@ router = APIRouter(prefix="/api/providers", tags=["providers"])
 
 
 @router.get("", response_model=List[ProviderStatus])
-async def list_providers():
+async def list_providers(current_user: UserModel = Depends(get_current_user)):
     """Returns status of all 5 providers, active containers, and current loaded models."""
     return await orchestrator.get_providers_status()
 
 
 @router.get("/vram", response_model=VramStatus)
-async def get_vram_status():
+async def get_vram_status(current_user: UserModel = Depends(get_current_user)):
     """Returns current GPU VRAM utilization and active engine/model."""
     return await orchestrator.get_vram_status()
 
 
 @router.get("/health")
-async def check_all_providers_health():
+async def check_all_providers_health(current_user: UserModel = Depends(get_current_user)):
     """
     Comprehensive Provider Health Check:
     Checks live reachability of all 5 providers, active containers, and GPU VRAM status.
@@ -45,7 +47,10 @@ async def check_all_providers_health():
 
 
 @router.get("/{provider_name}/models", response_model=List[ModelInfo])
-async def list_provider_models(provider_name: str):
+async def list_provider_models(
+    provider_name: str,
+    current_user: UserModel = Depends(get_current_user),
+):
     """
     Returns available models for the specified provider.
     For single-model engines (llama.cpp, koboldcpp), scans /models/*.gguf even if stopped.
@@ -61,9 +66,9 @@ async def list_provider_models(provider_name: str):
 
 
 @router.post("/unload")
-async def unload_all_models():
+async def unload_all_models(admin: UserModel = Depends(require_admin)):
     """
-    Eject / Unload VRAM:
+    Eject / Unload VRAM: Admin only.
     Unloads all active models across all engines and stops GPU containers.
     """
     await orchestrator.unload_all()
@@ -71,8 +76,8 @@ async def unload_all_models():
 
 
 @router.post("/{provider_name}/unload")
-async def unload_provider(provider_name: str):
-    """Unload a specific provider or model."""
+async def unload_provider(provider_name: str, admin: UserModel = Depends(require_admin)):
+    """Unload a specific provider or model: Admin only."""
     try:
         p = get_provider(provider_name)
         await p.unload()
@@ -85,9 +90,13 @@ async def unload_provider(provider_name: str):
 
 
 @router.post("/{provider_name}/load")
-async def load_model(provider_name: str, request: LoadModelRequest):
+async def load_model(
+    provider_name: str,
+    request: LoadModelRequest,
+    admin: UserModel = Depends(require_admin),
+):
     """
-    Model Load & Engine Switcher:
+    Model Load & Engine Switcher: Admin only.
     Streams real-time lifecycle progress events (stopping_previous -> starting_container -> loading_weights_to_vram -> ready) via SSE.
     """
     try:

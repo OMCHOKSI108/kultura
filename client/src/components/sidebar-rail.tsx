@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Boxes, Users, User as UserIcon } from "lucide-react";
+import { Boxes, Users, User as UserIcon, Activity, Settings } from "lucide-react";
 import { PixelMLogoBox } from "./brand-logo";
 import type { ChatSession } from "@/types/chat";
 import { useAuth } from "@/context/auth-context";
+import { useAuthorization } from "@/context/authorization-context";
 
 function IcoPlus() {
   return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>;
@@ -71,8 +72,8 @@ interface SidebarRailProps {
   onNewChat: () => void;
   onOpenSession: (session: ChatSession) => void;
   onDeleteSession: (id: string) => void;
-  activeView?: "chat" | "hub" | "users";
-  onSelectView?: (view: "chat" | "hub" | "users") => void;
+  activeView?: "chat" | "hub" | "users" | "observability" | "settings";
+  onSelectView?: (view: "chat" | "hub" | "users" | "observability" | "settings") => void;
   activeDownloadsCount?: number;
 }
 
@@ -87,6 +88,7 @@ export function SidebarRail({
   activeDownloadsCount = 0,
 }: SidebarRailProps) {
   const { user, openAuthModal } = useAuth();
+  const { can } = useAuthorization();
   const [historyOpen, setHistoryOpen] = useState(false);
   const [panelWidth, setPanelWidth] = useState(PANEL_DEFAULT);
   const dragging = useRef(false);
@@ -145,15 +147,44 @@ export function SidebarRail({
           <Boxes className="w-4 h-4" />
         </RailBtn>
 
+        {/* Observability Dashboard - Controlled by observability:view permission */}
+        {can("observability:view") && (
+          <RailBtn
+            label="Observability Dashboard"
+            active={activeView === "observability"}
+            onClick={() => {
+              onSelectView?.(activeView === "observability" ? "chat" : "observability");
+              setHistoryOpen(false);
+            }}
+          >
+            <Activity className="w-4 h-4 text-emerald-400" />
+          </RailBtn>
+        )}
+
+        {/* Users & Access - Controlled by users:manage permission */}
+        {can("users:manage") && (
+          <RailBtn
+            label="Users & Access"
+            active={activeView === "users"}
+            onClick={() => {
+              onSelectView?.(activeView === "users" ? "chat" : "users");
+              setHistoryOpen(false);
+            }}
+          >
+            <Users className="w-4 h-4" />
+          </RailBtn>
+        )}
+
+        {/* Account Settings & Developer API Keys */}
         <RailBtn
-          label="Users & Access"
-          active={activeView === "users"}
+          label="Settings & Developer Keys"
+          active={activeView === "settings"}
           onClick={() => {
-            onSelectView?.(activeView === "users" ? "chat" : "users");
+            onSelectView?.(activeView === "settings" ? "chat" : "settings");
             setHistoryOpen(false);
           }}
         >
-          <Users className="w-4 h-4" />
+          <Settings className="w-4 h-4" />
         </RailBtn>
 
         <div className="flex-1" />

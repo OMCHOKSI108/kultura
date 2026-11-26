@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { Lock } from "lucide-react";
+import { useAuthorization } from "@/context/authorization-context";
 import type { ProviderStatus, ModelInfo, VramStatus, LoadLifecycleProgress, ComprehensiveHealthStatus } from "@/types/provider";
 import {
   fetchProviders,
@@ -107,6 +109,9 @@ export function ProviderModelSelector({
   onOpenHub,
   refreshKey = 0,
 }: Props) {
+  const { can } = useAuthorization();
+  const canLoadModels = can("models:load");
+
   const [providers, setProviders] = useState<ProviderStatus[]>([]);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [vram, setVram] = useState<VramStatus | null>(null);
@@ -220,8 +225,8 @@ export function ProviderModelSelector({
     }
     setProviderOpen(false);
 
-    // Eject old LLM and provider first to eliminate any VRAM bottleneck or collision
-    if (isVramLoaded || (vram?.used_mb ?? 0) > 50 || vram?.active_model) {
+    // Eject old LLM and provider first to eliminate any VRAM bottleneck or collision (Admin only)
+    if (canLoadModels && (isVramLoaded || (vram?.used_mb ?? 0) > 50 || vram?.active_model)) {
       setIsEjecting(true);
       try {
         await unloadAllVram();
@@ -247,8 +252,8 @@ export function ProviderModelSelector({
     }
     setModelOpen(false);
 
-    // Eject old model from VRAM first so new model has 100% clean headroom
-    if (isVramLoaded || (vram?.used_mb ?? 0) > 50) {
+    // Eject old model from VRAM first so new model has 100% clean headroom (Admin only)
+    if (canLoadModels && (isVramLoaded || (vram?.used_mb ?? 0) > 50)) {
       setIsEjecting(true);
       try {
         await unloadAllVram();
@@ -266,6 +271,7 @@ export function ProviderModelSelector({
   }
 
   async function handleLoadModel() {
+    if (!canLoadModels) return;
     setLoadingStep("stopping_previous");
     setLoadingMsg("Evicting previous models & allocating VRAM...");
     setIsModelReady(false);
@@ -297,9 +303,10 @@ export function ProviderModelSelector({
       }
       const updatedVram = await fetchVramStatus();
       setVram(updatedVram);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setLoadingStep("error");
-      setLoadingMsg(err?.message || "Failed to load model");
+      const msg = err instanceof Error ? err.message : "Failed to load model";
+      setLoadingMsg(msg);
       setTimeout(() => {
         setLoadingStep(null);
         setLoadingMsg(null);
@@ -308,6 +315,7 @@ export function ProviderModelSelector({
   }
 
   async function handleUnload() {
+    if (!canLoadModels) return;
     setIsEjecting(true);
     try {
       await unloadAllVram();
@@ -562,7 +570,7 @@ export function ProviderModelSelector({
               <IconCheck className="w-3 h-3 text-emerald-400" />
               <span>Ready in VRAM</span>
             </div>
-          ) : (
+          ) : canLoadModels ? (
             <button
               onClick={handleLoadModel}
               disabled={!selectedModel || isProviderOffline}
@@ -578,6 +586,14 @@ export function ProviderModelSelector({
               <IconPlay className="w-2.5 h-2.5 text-indigo-400" />
               <span>Load Model</span>
             </button>
+          ) : (
+            <div
+              title="Model loading is managed by system administrators"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-zinc-400 bg-zinc-800/40 border border-zinc-700/30"
+            >
+              <Lock className="w-3 h-3 text-zinc-500" />
+              <span>Admin Managed</span>
+            </div>
           )}
         </div>
 
@@ -630,20 +646,22 @@ export function ProviderModelSelector({
             </div>
           )}
 
-          {/* Eject VRAM Button */}
-          <button
-            onClick={handleUnload}
-            disabled={isEjecting}
-            title="Free all GPU VRAM immediately and evict active models"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-gray-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/25 border border-[#2E2E33] transition-all disabled:opacity-50 cursor-pointer"
-          >
-            {isEjecting ? (
-              <IconSpinner className="w-3 h-3 text-red-400 animate-spin" />
-            ) : (
-              <IconEject className="w-3 h-3" />
-            )}
-            <span>{isEjecting ? "Ejecting..." : "Eject VRAM"}</span>
-          </button>
+          {/* Eject VRAM Button - Admin Only */}
+          {canLoadModels && (
+            <button
+              onClick={handleUnload}
+              disabled={isEjecting}
+              title="Free all GPU VRAM immediately and evict active models"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-gray-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/25 border border-[#2E2E33] transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {isEjecting ? (
+                <IconSpinner className="w-3 h-3 text-red-400 animate-spin" />
+              ) : (
+                <IconEject className="w-3 h-3" />
+              )}
+              <span>{isEjecting ? "Ejecting..." : "Eject VRAM"}</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -768,15 +786,17 @@ export function ProviderModelSelector({
 
             {/* Modal Actions */}
             <div className="flex items-center justify-between pt-2 border-t border-[#2A2A32]">
-              <button
-                type="button"
-                onClick={handleUnload}
-                disabled={isEjecting}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-red-300 hover:text-white bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 transition-all cursor-pointer"
-              >
-                <IconEject className="w-3 h-3" />
-                <span>{isEjecting ? "Ejecting VRAM..." : "Eject All VRAM"}</span>
-              </button>
+              {canLoadModels ? (
+                <button
+                  type="button"
+                  onClick={handleUnload}
+                  disabled={isEjecting}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-red-300 hover:text-white bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 transition-all cursor-pointer"
+                >
+                  <IconEject className="w-3 h-3" />
+                  <span>{isEjecting ? "Ejecting VRAM..." : "Eject All VRAM"}</span>
+                </button>
+              ) : <div />}
 
               <button
                 type="button"

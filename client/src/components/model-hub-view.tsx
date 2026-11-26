@@ -21,7 +21,9 @@ import {
   RefreshCw,
   LayoutGrid,
   List,
+  Lock,
 } from "lucide-react";
+import { useAuthorization } from "@/context/authorization-context";
 import { ModelBrandIcon, HuggingFace } from "@/components/model-brand-icon";
 import type {
   HubModelSearchItem,
@@ -36,6 +38,7 @@ import {
   cancelDownloadApi,
   subscribeToDownloadsStream,
 } from "@/lib/api";
+import { HUB_CATEGORIES } from "@/lib/constants";
 
 const SORT_OPTIONS = [
   { id: "downloads", label: "Most Downloaded" },
@@ -85,9 +88,13 @@ export function ModelHubView({
   onModelDownloaded,
   onClose,
 }: ModelHubViewProps) {
+  const { can } = useAuthorization();
+  const canDownload = can("models:download");
+
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [sort, setSort] = useState("downloads");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [activeFilter, setActiveFilter] = useState("all");
   const [models, setModels] = useState<HubModelSearchItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -137,7 +144,7 @@ export function ModelHubView({
 
     async function load() {
       const q = debouncedQuery.trim() || undefined;
-      const results = await searchHubModels(q, sort, 30);
+      const results = await searchHubModels(q, sort, 30, selectedCategory);
       if (active) {
         setModels(results);
         setIsLoading(false);
@@ -148,7 +155,7 @@ export function ModelHubView({
     return () => {
       active = false;
     };
-  }, [debouncedQuery, sort]);
+  }, [debouncedQuery, sort, selectedCategory]);
 
   // Subscribe to live SSE download stream
   useEffect(() => {
@@ -246,7 +253,7 @@ export function ModelHubView({
   }, [models, activeFilter]);
 
   async function handleDownload(file: HubModelFile) {
-    if (!selectedRepoId) return;
+    if (!selectedRepoId || !canDownload) return;
     const provider = targetProviders[file.filename] || initialProvider || "ollama";
 
     try {
@@ -256,12 +263,14 @@ export function ModelHubView({
         quant: file.quant,
         provider: provider as any,
       });
-    } catch (err: any) {
-      alert(`Download failed: ${err?.message || "Unknown error"}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      alert(`Download failed: ${msg}`);
     }
   }
 
   async function handleCancelDownload(downloadId: string) {
+    if (!canDownload) return;
     try {
       await cancelDownloadApi(downloadId);
     } catch (err) {
@@ -308,98 +317,131 @@ export function ModelHubView({
       </div>
 
       {/* Search, Filter & Controls Row */}
-      <div className="px-6 py-3.5 border-b border-[#222226] bg-[#17171A] flex flex-col md:flex-row md:items-center justify-between gap-3 flex-shrink-0">
-        {/* Search Bar + Result Count */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1 max-w-2xl">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search Hugging Face models (e.g. Qwen2.5, DeepSeek-R1, Llama 3, Gemma)..."
-              className="w-full pl-9 pr-8 py-2 rounded-xl bg-[#1F1F24] border border-[#2E2E35] text-xs text-gray-100 placeholder-gray-500 focus:outline-none focus:border-pink-500/60 focus:ring-1 focus:ring-pink-500/40 transition-all"
-            />
-            {query && (
-              <button
-                onClick={() => setQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
-                title="Clear search"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
+      <div className="px-6 py-3 border-b border-[#222226] bg-[#17171A] flex flex-col gap-2.5 flex-shrink-0">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          {/* Search Bar + Result Count */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1 max-w-2xl">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search models or exact repo (e.g. Qwen/Qwen2.5-Coder-7B-GGUF, OMCHOKSI108/mycustomModel)..."
+                className="w-full pl-9 pr-8 py-2 rounded-xl bg-[#1F1F24] border border-[#2E2E35] text-xs text-gray-100 placeholder-gray-500 focus:outline-none focus:border-pink-500/60 focus:ring-1 focus:ring-pink-500/40 transition-all"
+              />
+              {query && (
+                <button
+                  onClick={() => setQuery("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
+                  title="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            <span className="text-[11px] text-gray-400 font-mono shrink-0">
+              Showing {filteredModels.length} verified GGUF model{filteredModels.length === 1 ? "" : "s"}
+            </span>
           </div>
-          <span className="text-[11px] text-gray-400 font-mono shrink-0">
-            Showing {filteredModels.length} verified GGUF model{filteredModels.length === 1 ? "" : "s"}
-          </span>
+
+          {/* Filter Chips, Sort & View Mode Controls */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Quick Filters */}
+            <div className="flex items-center gap-1.5 bg-[#1F1F24] p-1 rounded-xl border border-[#2E2E35]">
+              {FILTER_CHIPS.map((chip) => {
+                const Icon = chip.icon;
+                const isActive = activeFilter === chip.id;
+                return (
+                  <button
+                    key={chip.id}
+                    onClick={() => startTransition(() => setActiveFilter(chip.id))}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${
+                      isActive
+                        ? "bg-pink-500 text-white shadow-sm"
+                        : "text-gray-400 hover:text-gray-200 hover:bg-[#2A2A32]"
+                    }`}
+                  >
+                    {Icon && <Icon className="w-3 h-3" />}
+                    <span>{chip.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Sort Dropdown */}
+            <div className="relative">
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                className="appearance-none bg-[#1F1F24] border border-[#2E2E35] text-xs text-gray-300 font-medium py-1.5 pl-3 pr-8 rounded-xl focus:outline-none focus:border-pink-500/50 cursor-pointer"
+              >
+                {SORT_OPTIONS.map((opt) => (
+                  <option key={opt.id} value={opt.id} className="bg-[#1A1A1E] text-gray-200">
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <ArrowUpDown className="w-3 h-3 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+
+            {/* Grid / List View Toggle */}
+            <div className="flex items-center bg-[#1F1F24] p-1 rounded-xl border border-[#2E2E35]">
+              <button
+                onClick={() => handleViewModeChange("grid")}
+                className={`p-1.5 rounded-lg transition-all ${
+                  viewMode === "grid"
+                    ? "bg-pink-500 text-white shadow-xs"
+                    : "text-gray-400 hover:text-gray-200 hover:bg-[#2A2A32]"
+                }`}
+                title="Grid View"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => handleViewModeChange("list")}
+                className={`p-1.5 rounded-lg transition-all ${
+                  viewMode === "list"
+                    ? "bg-pink-500 text-white shadow-xs"
+                    : "text-gray-400 hover:text-gray-200 hover:bg-[#2A2A32]"
+                }`}
+                title="List View"
+              >
+                <List className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Filter Chips, Sort & View Mode Controls */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Quick Filters */}
-          <div className="flex items-center gap-1.5 bg-[#1F1F24] p-1 rounded-xl border border-[#2E2E35]">
-            {FILTER_CHIPS.map((chip) => {
-              const Icon = chip.icon;
-              const isActive = activeFilter === chip.id;
-              return (
-                <button
-                  key={chip.id}
-                  onClick={() => startTransition(() => setActiveFilter(chip.id))}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${
-                    isActive
-                      ? "bg-pink-500 text-white shadow-sm"
-                      : "text-gray-400 hover:text-gray-200 hover:bg-[#2A2A32]"
-                  }`}
-                >
-                  {Icon && <Icon className="w-3 h-3" />}
-                  <span>{chip.label}</span>
-                </button>
-              );
-            })}
+        {/* Custom HuggingFace Direct Repo Alert */}
+        {query.includes("/") && (
+          <div className="px-3 py-1.5 rounded-lg bg-pink-500/10 border border-pink-500/25 text-pink-300 text-xs flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-pink-400 animate-pulse" />
+              <span>
+                <strong>Direct HuggingFace Lookup:</strong> Searching exact repository <code className="font-mono text-pink-200 bg-pink-900/30 px-1 py-0.5 rounded">{query.trim()}</code> directly on HuggingFace API.
+              </span>
+            </div>
+            <span className="text-[10px] uppercase font-mono tracking-wider text-pink-400">Custom Model Support</span>
           </div>
+        )}
 
-          {/* Sort Dropdown */}
-          <div className="relative">
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value)}
-              className="appearance-none bg-[#1F1F24] border border-[#2E2E35] text-xs text-gray-300 font-medium py-1.5 pl-3 pr-8 rounded-xl focus:outline-none focus:border-pink-500/50 cursor-pointer"
-            >
-              {SORT_OPTIONS.map((opt) => (
-                <option key={opt.id} value={opt.id} className="bg-[#1A1A1E] text-gray-200">
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <ArrowUpDown className="w-3 h-3 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
-
-          {/* Grid / List View Toggle */}
-          <div className="flex items-center bg-[#1F1F24] p-1 rounded-xl border border-[#2E2E35]">
+        {/* Category Pills */}
+        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+          <span className="text-[11px] text-zinc-500 font-mono mr-1">Categories:</span>
+          {HUB_CATEGORIES.map((cat) => (
             <button
-              onClick={() => handleViewModeChange("grid")}
-              className={`p-1.5 rounded-lg transition-all ${
-                viewMode === "grid"
-                  ? "bg-pink-500 text-white shadow-xs"
-                  : "text-gray-400 hover:text-gray-200 hover:bg-[#2A2A32]"
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition ${
+                selectedCategory === cat.id
+                  ? "bg-pink-500/20 text-pink-300 border border-pink-500/40"
+                  : "bg-[#1E1E23] text-zinc-400 hover:text-zinc-200 border border-[#2B2B32]"
               }`}
-              title="Grid View"
             >
-              <LayoutGrid className="w-3.5 h-3.5" />
+              {cat.label}
             </button>
-            <button
-              onClick={() => handleViewModeChange("list")}
-              className={`p-1.5 rounded-lg transition-all ${
-                viewMode === "list"
-                  ? "bg-pink-500 text-white shadow-xs"
-                  : "text-gray-400 hover:text-gray-200 hover:bg-[#2A2A32]"
-              }`}
-              title="List View"
-            >
-              <List className="w-3.5 h-3.5" />
-            </button>
-          </div>
+          ))}
         </div>
       </div>
 
@@ -671,13 +713,16 @@ export function ModelHubView({
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => handleCancelDownload(dl.download_id)}
-                    title="Cancel download"
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+                  {canDownload && (
+                    <button
+                      onClick={() => handleCancelDownload(dl.download_id)}
+                      title="Cancel download"
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
+                      aria-label="Cancel download"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -755,6 +800,39 @@ export function ModelHubView({
                 </div>
               ) : (
                 <div className="flex flex-col gap-4">
+                  {/* Model Specifications & Parameters Cards */}
+                  {(() => {
+                    const sm = models.find((m) => m.id === selectedRepoId);
+                    return (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <div className="p-3 rounded-xl bg-[#202026] border border-[#2D2D37]">
+                          <span className="text-[10px] uppercase font-mono text-gray-400 block">Parameters</span>
+                          <span className="text-xs font-semibold text-gray-100 font-mono">
+                            {sm?.total_params_formatted || (sm?.param_size_b ? `${sm.param_size_b}B` : "Standard")}
+                          </span>
+                        </div>
+                        <div className="p-3 rounded-xl bg-[#202026] border border-[#2D2D37]">
+                          <span className="text-[10px] uppercase font-mono text-gray-400 block">Architecture</span>
+                          <span className="text-xs font-semibold text-gray-100 font-mono truncate block">
+                            {sm?.architecture || "Transformer"}
+                          </span>
+                        </div>
+                        <div className="p-3 rounded-xl bg-[#202026] border border-[#2D2D37]">
+                          <span className="text-[10px] uppercase font-mono text-gray-400 block">Context Window</span>
+                          <span className="text-xs font-semibold text-gray-100 font-mono">
+                            {sm?.context_length ? `${sm.context_length.toLocaleString()} ctx` : "32k ctx"}
+                          </span>
+                        </div>
+                        <div className="p-3 rounded-xl bg-[#202026] border border-[#2D2D37]">
+                          <span className="text-[10px] uppercase font-mono text-gray-400 block">Ecosystem</span>
+                          <span className="text-xs font-semibold text-pink-400 font-mono">
+                            GGUF Weights
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Info notice about VRAM calculation */}
                   <div className="p-3 rounded-xl bg-[#202026] border border-[#2D2D37] text-xs text-gray-300 flex items-center justify-between">
                     <div>
@@ -866,13 +944,23 @@ export function ModelHubView({
                                       />
                                     </div>
                                   </div>
-                                ) : (
+                                ) : canDownload ? (
                                   <button
                                     onClick={() => handleDownload(f)}
                                     className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#272730] hover:bg-pink-600 text-xs font-medium text-gray-200 hover:text-white transition-all shadow-sm cursor-pointer"
                                   >
                                     <Download className="w-3.5 h-3.5" />
                                     <span>Download</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    disabled
+                                    aria-disabled="true"
+                                    title="Admin privileges required to download models"
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-800/50 text-xs font-medium text-zinc-500 cursor-not-allowed opacity-60"
+                                  >
+                                    <Lock className="w-3.5 h-3.5" />
+                                    <span>Admin Only</span>
                                   </button>
                                 )}
                               </td>
