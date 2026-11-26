@@ -10,6 +10,10 @@
   <a href="https://www.nvidia.com"><img src="https://img.shields.io/badge/NVIDIA_CUDA-12%2F13-76B900?logo=nvidia&logoColor=white" alt="CUDA"></a>
 </p>
 
+<p align="center">
+  <img src="docs/assets/architecture.png" alt="Kultura AI Inference Architecture: Request Flow & Component Diagram" width="100%" />
+</p>
+
 ## Architecture Overview
 
 Kultura connects the Next.js 16 frontend (`client/`) to a Python 3.12 FastAPI **Aggregation Gateway & Lifecycle Orchestrator** (`server/`). It is optimized for 4GB VRAM GPUs (e.g. NVIDIA RTX 3050 Laptop) using a **Mutual-Exclusion "Zero-Waste VRAM Manager"** that ensures only one engine and model occupies GPU memory at any given time.
